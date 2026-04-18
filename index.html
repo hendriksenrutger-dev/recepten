@@ -362,7 +362,7 @@ textarea{resize:vertical;min-height:88px}
 const SUPABASE_URL = 'https://kegpsbtlfnqxrwiaeovc.supabase.co';
 const SUPABASE_KEY = 'sb_publishable_4afcXICjvnZHcjxruVoMRA_PKFBp1hp';
 const ANT_KEY_STORE = 'cucina_anthropic_key';
-const ANTHROPIC_KEY_DEFAULT = 'sk-ant-api03-WiZxD6K2W5ZRvhoNu8oanrIIE0TsWcuz5vP5VoMTSFtAr1Eg-kR3drAy5VQMkjCejGb6-1PvMHu4qNjwOxnoUA-PbANmwAA';
+
 let recipes = [], activeFilter = 'alle', fabOpen = false, currentRecipeId = null, currentServings = 4, baseServings = 4;
 
 // ── SUPABASE ──────────────────────────────────────
@@ -708,7 +708,7 @@ function openModal(id) { document.getElementById(id).classList.remove('hidden');
 function closeModal(id) { document.getElementById(id).classList.add('hidden'); }
 function openSettings() { document.getElementById('s-anthropic').value = getAntKey(); openModal('modal-settings'); }
 function saveSettings() { const k=document.getElementById('s-anthropic').value.trim(); if(k) localStorage.setItem(ANT_KEY_STORE,k); else localStorage.removeItem(ANT_KEY_STORE); closeModal('modal-settings'); toast('Opgeslagen ✓','success'); }
-function getAntKey() { return localStorage.getItem(ANT_KEY_STORE) || ANTHROPIC_KEY_DEFAULT; }
+function getAntKey() { return localStorage.getItem(ANT_KEY_STORE) || ''; }
 document.querySelectorAll('.overlay').forEach(el => el.addEventListener('click', e => { if(e.target===el) el.classList.add('hidden'); }));
 document.addEventListener('keydown', e => { if(e.key==='Escape') { document.querySelectorAll('.overlay').forEach(el=>el.classList.add('hidden')); closeFab(); } });
 
