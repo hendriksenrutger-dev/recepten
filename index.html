@@ -139,6 +139,21 @@ html,body{height:100%;background:var(--cream);color:var(--text);font-family:'DM 
 .edit-save{background:var(--blue-deep);color:var(--white);border:none;padding:0.38rem 0.9rem;border-radius:6px;font-size:0.8rem;cursor:pointer}
 .edit-cancel{background:var(--blue-pale);color:var(--text);border:1px solid var(--border);padding:0.38rem 0.8rem;border-radius:6px;font-size:0.8rem;cursor:pointer}
 
+/* LIST VIEW */
+.recipe-list-view{flex:1;overflow-y:auto;padding:0.5rem 0.75rem 5rem;display:flex;flex-direction:column;gap:0.4rem}
+.rcard-list{background:var(--white);border:1px solid var(--border);border-radius:var(--radius);cursor:pointer;position:relative;transition:transform 0.2s,border-color 0.2s;animation:fadeUp 0.3s ease both;display:flex;align-items:center;gap:0.75rem;padding:0.65rem 0.85rem}
+.rcard-list:hover{border-color:var(--blue-mid);transform:translateX(3px)}
+.rcard-list-emoji{font-size:1.6rem;flex-shrink:0}
+.rcard-list-info{flex:1;min-width:0}
+.rcard-list-title{font-family:'Playfair Display',serif;font-size:0.95rem;font-weight:700;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.rcard-list-meta{font-size:0.72rem;color:var(--text-mid);margin-top:0.1rem}
+.rcard-list-arrow{color:var(--text-light);flex-shrink:0}
+.rcard-list-arrow svg{width:14px;height:14px}
+.rcard-list-del{background:none;border:none;color:var(--text-light);cursor:pointer;padding:4px;flex-shrink:0;opacity:0;transition:opacity 0.2s}
+.rcard-list-del svg{width:13px;height:13px}
+.rcard-list:hover .rcard-list-del{opacity:1}
+.rcard-list-del:hover{color:#C62828}
+
 /* SHOPPING SCREEN */
 #screen-shopping{display:flex;flex-direction:column;height:100dvh}
 .shopping-list{flex:1;overflow-y:auto;padding:0.75rem 1.25rem 5rem;display:flex;flex-direction:column;gap:0.4rem}
@@ -227,6 +242,10 @@ textarea{resize:vertical;min-height:88px}
   <div class="main-header">
     <div class="main-logo">Cucina <span>Hendriksen</span></div>
     <div class="header-btns">
+      <button class="hbtn" id="btn-view" onclick="toggleView()" title="Weergave wisselen">
+        <svg id="icon-grid" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg>
+        <svg id="icon-list" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="display:none"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/></svg>
+      </button>
       <button class="hbtn" id="btn-shopping" onclick="showShopping()" title="Boodschappenlijst">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 2 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"/><line x1="3" y1="6" x2="21" y2="6"/><path d="M16 10a4 4 0 0 1-8 0"/></svg>
       </button>
@@ -408,6 +427,7 @@ const SHOP_STORE = 'cucina_shopping';
 let recipes = [], activeFilter = 'alle', fabOpen = false;
 let currentRecipeId = null, currentServings = 4, baseServings = 4;
 let shoppingList = JSON.parse(localStorage.getItem(SHOP_STORE) || '[]');
+let viewMode = localStorage.getItem('cucina_view') || 'grid';
 
 // ── SUPABASE ──────────────────────────────────────
 async function sbFetch(path, opts = {}) {
@@ -486,6 +506,15 @@ function showShopping() {
   renderShopping();
 }
 
+// ── VIEW TOGGLE ───────────────────────────────────
+function toggleView() {
+  viewMode = viewMode === 'grid' ? 'list' : 'grid';
+  localStorage.setItem('cucina_view', viewMode);
+  document.getElementById('icon-grid').style.display = viewMode === 'grid' ? '' : 'none';
+  document.getElementById('icon-list').style.display = viewMode === 'list' ? '' : 'none';
+  renderList();
+}
+
 // ── LIST (GRID) ───────────────────────────────────
 const CAT_EMOJI = {vlees:'🥩',vis:'🐟',vegetarisch:'🥦',bbq:'🔥',soep:'🍲',pasta:'🍝',nagerecht:'🍮',overig:'🍴'};
 
@@ -499,6 +528,13 @@ function renderList() {
     return mc && mq;
   });
   document.getElementById('list-count').textContent = filtered.length + ' recept' + (filtered.length !== 1 ? 'en' : '');
+
+  // Update view icons
+  const ig = document.getElementById('icon-grid');
+  const il = document.getElementById('icon-list');
+  if (ig) ig.style.display = viewMode === 'grid' ? '' : 'none';
+  if (il) il.style.display = viewMode === 'list' ? '' : 'none';
+
   if (!filtered.length) {
     grid.innerHTML = '';
     grid.appendChild(empty);
@@ -506,21 +542,43 @@ function renderList() {
     return;
   }
   empty.classList.add('hidden');
-  grid.innerHTML = filtered.map((r,i) => `
-    <div class="rcard" onclick="showDetail('${r.id}')" style="animation-delay:${i*0.04}s">
-      <div class="rcard-emoji">${r.emoji || CAT_EMOJI[r.category] || '🍴'}</div>
-      <div class="rcard-body">
-        <span class="rcard-tag">${r.category||'overig'}</span>
-        <div class="rcard-title">${r.name}</div>
-        <div class="rcard-info">
-          ${r.time ? `<span>⏱ ${r.time} min</span>` : ''}
-          ${r.servings ? `<span>👥 ${r.servings} pers.</span>` : ''}
+
+  if (viewMode === 'list') {
+    // Sort alphabetically for list view
+    const sorted = [...filtered].sort((a,b) => a.name.localeCompare(b.name, 'nl'));
+    grid.className = 'recipe-list-view';
+    grid.id = 'recipe-grid';
+    grid.innerHTML = sorted.map((r,i) => `
+      <div class="rcard-list" onclick="showDetail('${r.id}')" style="animation-delay:${i*0.03}s">
+        <span class="rcard-list-emoji">${r.emoji || CAT_EMOJI[r.category] || '🍴'}</span>
+        <div class="rcard-list-info">
+          <div class="rcard-list-title">${r.name}</div>
+          <div class="rcard-list-meta">${r.category||'overig'}${r.time ? ' · ' + r.time + ' min' : ''}${r.servings ? ' · ' + r.servings + ' pers.' : ''}</div>
         </div>
-      </div>
-      <button class="rcard-del" onclick="event.stopPropagation();confirmDelete('${r.id}')" title="Verwijder">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/><path d="M9 6V4h6v2"/></svg>
-      </button>
-    </div>`).join('');
+        <button class="rcard-list-del" onclick="event.stopPropagation();confirmDelete('${r.id}')" title="Verwijder">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/><path d="M9 6V4h6v2"/></svg>
+        </button>
+        <span class="rcard-list-arrow"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="9 18 15 12 9 6"/></svg></span>
+      </div>`).join('');
+  } else {
+    grid.className = 'recipe-grid';
+    grid.id = 'recipe-grid';
+    grid.innerHTML = filtered.map((r,i) => `
+      <div class="rcard" onclick="showDetail('${r.id}')" style="animation-delay:${i*0.04}s">
+        <div class="rcard-emoji">${r.emoji || CAT_EMOJI[r.category] || '🍴'}</div>
+        <div class="rcard-body">
+          <span class="rcard-tag">${r.category||'overig'}</span>
+          <div class="rcard-title">${r.name}</div>
+          <div class="rcard-info">
+            ${r.time ? `<span>⏱ ${r.time} min</span>` : ''}
+            ${r.servings ? `<span>👥 ${r.servings} pers.</span>` : ''}
+          </div>
+        </div>
+        <button class="rcard-del" onclick="event.stopPropagation();confirmDelete('${r.id}')" title="Verwijder">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/><path d="M9 6V4h6v2"/></svg>
+        </button>
+      </div>`).join('');
+  }
 }
 
 function setFilter(cat, btn) {
