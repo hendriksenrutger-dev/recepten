@@ -1,8 +1,8 @@
 const CACHE = 'recepten-v1';
 const ASSETS = [
-  './',
-  './index.html',
-  './manifest.json'
+  self.registration.scope,
+  self.registration.scope + 'index.html',
+  self.registration.scope + 'manifest.json'
 ];
 
 self.addEventListener('install', e => {
