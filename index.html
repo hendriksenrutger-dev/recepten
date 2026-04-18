@@ -509,7 +509,9 @@ function showShopping() {
 function toggleView() {
   viewMode = viewMode === 'grid' ? 'list' : 'grid';
   localStorage.setItem('cucina_view', viewMode);
-  renderList();
+  const grid = document.getElementById('recipe-grid');
+  grid.innerHTML = '';
+  setTimeout(() => renderList(), 10);
 }
 
 // ── LIST (GRID) ───────────────────────────────────
@@ -562,16 +564,9 @@ function renderList() {
       <div class="rcard" onclick="showDetail('${r.id}')" style="animation-delay:${i*0.04}s">
         <div class="rcard-emoji">${r.emoji || CAT_EMOJI[r.category] || '🍴'}</div>
         <div class="rcard-body">
-          <span class="rcard-tag">${r.category||'overig'}</span>
           <div class="rcard-title">${r.name}</div>
-          <div class="rcard-info">
-            ${r.time ? `<span>⏱ ${r.time} min</span>` : ''}
-            ${r.servings ? `<span>👥 ${r.servings} pers.</span>` : ''}
-          </div>
+          <div class="rcard-info"><span>${r.category||'overig'}${r.time ? ' · '+r.time+'m' : ''}</span></div>
         </div>
-        <button class="rcard-del" onclick="event.stopPropagation();confirmDelete('${r.id}')" title="Verwijder">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/><path d="M9 6V4h6v2"/></svg>
-        </button>
       </div>`).join('');
   }
 }
