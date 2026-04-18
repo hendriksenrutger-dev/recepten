@@ -1,0 +1,1031 @@
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Mijn Recepten</title>
+  <meta name="description" content="Mijn persoonlijke receptenverzameling" />
+  <meta name="theme-color" content="#0D0D0D" />
+  <link rel="manifest" href="manifest.json" />
+  <link rel="apple-touch-icon" href="icons/icon-192.png" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:ital,wght@0,300;0,400;0,500;0,700;1,400&display=swap" rel="stylesheet" />
+  <style>
+    /* ── RESET & BASE ── */
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    :root {
+      --bg:        #0D0D0D;
+      --bg2:       #161616;
+      --bg3:       #1E1E1E;
+      --border:    #2A2A2A;
+      --accent:    #FF6B35;
+      --accent2:   #FF8C5A;
+      --text:      #F0F0F0;
+      --muted:     #888;
+      --ff-title:  'Bebas Neue', sans-serif;
+      --ff-body:   'DM Sans', sans-serif;
+      --radius:    12px;
+      --transition: 0.2s ease;
+    }
+
+    html { scroll-behavior: smooth; }
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: var(--ff-body);
+      font-size: 16px;
+      line-height: 1.6;
+      min-height: 100dvh;
+      overflow-x: hidden;
+    }
+
+    /* ── SCROLLBAR ── */
+    ::-webkit-scrollbar { width: 6px; }
+    ::-webkit-scrollbar-track { background: var(--bg); }
+    ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+
+    /* ── HEADER ── */
+    header {
+      position: sticky; top: 0; z-index: 100;
+      background: rgba(13,13,13,0.92);
+      backdrop-filter: blur(12px);
+      border-bottom: 1px solid var(--border);
+      padding: 0 1.5rem;
+      height: 60px;
+      display: flex; align-items: center; justify-content: space-between;
+    }
+    .logo {
+      font-family: var(--ff-title);
+      font-size: 1.6rem;
+      letter-spacing: 0.08em;
+      color: var(--text);
+    }
+    .logo span { color: var(--accent); }
+
+    .header-actions { display: flex; gap: 0.5rem; align-items: center; }
+    .btn-icon {
+      background: none; border: none; color: var(--muted);
+      cursor: pointer; padding: 8px; border-radius: 8px;
+      transition: color var(--transition), background var(--transition);
+      display: flex; align-items: center; justify-content: center;
+    }
+    .btn-icon:hover { color: var(--text); background: var(--bg3); }
+    .btn-icon svg { width: 20px; height: 20px; }
+
+    /* ── MAIN LAYOUT ── */
+    main { max-width: 1200px; margin: 0 auto; padding: 2rem 1.5rem; }
+
+    /* ── HERO ── */
+    .hero {
+      padding: 3rem 0 2.5rem;
+      display: flex; flex-direction: column; gap: 1.5rem;
+    }
+    .hero-title {
+      font-family: var(--ff-title);
+      font-size: clamp(3rem, 8vw, 5.5rem);
+      line-height: 0.95;
+      letter-spacing: 0.04em;
+    }
+    .hero-title .highlight { color: var(--accent); }
+
+    /* ── SEARCH ── */
+    .search-bar {
+      position: relative; max-width: 520px;
+    }
+    .search-bar input {
+      width: 100%; background: var(--bg2);
+      border: 1px solid var(--border); border-radius: var(--radius);
+      padding: 0.85rem 1rem 0.85rem 3rem;
+      color: var(--text); font-family: var(--ff-body); font-size: 0.95rem;
+      transition: border-color var(--transition), box-shadow var(--transition);
+      outline: none;
+    }
+    .search-bar input:focus {
+      border-color: var(--accent);
+      box-shadow: 0 0 0 3px rgba(255,107,53,0.15);
+    }
+    .search-bar input::placeholder { color: var(--muted); }
+    .search-icon {
+      position: absolute; left: 1rem; top: 50%; transform: translateY(-50%);
+      color: var(--muted); pointer-events: none;
+    }
+    .search-icon svg { width: 18px; height: 18px; }
+
+    /* ── FILTER TABS ── */
+    .filter-bar {
+      display: flex; gap: 0.5rem; flex-wrap: wrap; padding: 0.25rem 0;
+    }
+    .filter-btn {
+      background: var(--bg2); border: 1px solid var(--border);
+      color: var(--muted); font-family: var(--ff-body); font-size: 0.85rem;
+      font-weight: 500; padding: 0.4rem 1rem; border-radius: 99px;
+      cursor: pointer; transition: all var(--transition);
+      white-space: nowrap;
+    }
+    .filter-btn:hover { border-color: var(--accent); color: var(--text); }
+    .filter-btn.active {
+      background: var(--accent); border-color: var(--accent);
+      color: #fff;
+    }
+
+    /* ── SECTION HEADER ── */
+    .section-header {
+      display: flex; justify-content: space-between; align-items: baseline;
+      margin-bottom: 1.25rem;
+    }
+    .section-title {
+      font-family: var(--ff-title);
+      font-size: 1.8rem; letter-spacing: 0.06em; color: var(--text);
+    }
+    .recipe-count { font-size: 0.85rem; color: var(--muted); }
+
+    /* ── RECIPE GRID ── */
+    .recipe-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+      gap: 1.25rem;
+    }
+
+    .recipe-card {
+      background: var(--bg2);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      overflow: hidden;
+      cursor: pointer;
+      transition: transform var(--transition), border-color var(--transition), box-shadow var(--transition);
+      animation: fadeUp 0.3s ease both;
+      position: relative;
+    }
+    .recipe-card:hover {
+      transform: translateY(-3px);
+      border-color: var(--accent);
+      box-shadow: 0 8px 32px rgba(255,107,53,0.12);
+    }
+    @keyframes fadeUp {
+      from { opacity: 0; transform: translateY(16px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+
+    .card-thumb {
+      width: 100%; aspect-ratio: 16/9; object-fit: cover;
+      background: var(--bg3);
+      display: flex; align-items: center; justify-content: center;
+    }
+    .card-thumb-placeholder {
+      width: 100%; aspect-ratio: 16/9;
+      background: var(--bg3);
+      display: flex; align-items: center; justify-content: center;
+      font-size: 3rem;
+    }
+    .card-body { padding: 1rem 1.1rem 1.2rem; }
+    .card-meta {
+      display: flex; gap: 0.5rem; align-items: center; margin-bottom: 0.5rem;
+      flex-wrap: wrap;
+    }
+    .tag {
+      font-size: 0.72rem; font-weight: 600; letter-spacing: 0.06em;
+      text-transform: uppercase; padding: 0.2rem 0.55rem;
+      border-radius: 4px; background: rgba(255,107,53,0.15); color: var(--accent);
+    }
+    .card-source {
+      font-size: 0.72rem; color: var(--muted);
+    }
+    .card-title {
+      font-family: var(--ff-title); font-size: 1.35rem;
+      letter-spacing: 0.04em; line-height: 1.1;
+      margin-bottom: 0.5rem; color: var(--text);
+    }
+    .card-info {
+      display: flex; gap: 1rem; font-size: 0.8rem; color: var(--muted);
+      margin-top: 0.75rem;
+    }
+    .card-info span { display: flex; align-items: center; gap: 0.3rem; }
+    .card-info svg { width: 14px; height: 14px; }
+
+    .card-delete {
+      position: absolute; top: 0.6rem; right: 0.6rem;
+      background: rgba(13,13,13,0.8); border: 1px solid var(--border);
+      color: var(--muted); border-radius: 6px;
+      width: 28px; height: 28px; cursor: pointer;
+      display: flex; align-items: center; justify-content: center;
+      opacity: 0; transition: opacity var(--transition), color var(--transition);
+    }
+    .card-delete svg { width: 14px; height: 14px; }
+    .recipe-card:hover .card-delete { opacity: 1; }
+    .card-delete:hover { color: #ff4444; border-color: #ff4444; }
+
+    /* ── EMPTY STATE ── */
+    .empty-state {
+      text-align: center; padding: 5rem 2rem;
+      display: flex; flex-direction: column; align-items: center; gap: 1rem;
+    }
+    .empty-icon { font-size: 4rem; }
+    .empty-state h3 {
+      font-family: var(--ff-title); font-size: 2rem;
+      letter-spacing: 0.06em; color: var(--text);
+    }
+    .empty-state p { color: var(--muted); max-width: 300px; }
+
+    /* ── FAB ── */
+    .fab {
+      position: fixed; bottom: 2rem; right: 2rem; z-index: 200;
+      display: flex; flex-direction: column; align-items: flex-end; gap: 0.75rem;
+    }
+    .fab-menu { display: flex; flex-direction: column; gap: 0.5rem; align-items: flex-end; }
+    .fab-menu.hidden { display: none; }
+
+    .fab-item {
+      display: flex; align-items: center; gap: 0.75rem;
+      animation: slideIn 0.2s ease;
+    }
+    @keyframes slideIn {
+      from { opacity:0; transform: translateX(12px); }
+      to   { opacity:1; transform: translateX(0); }
+    }
+    .fab-label {
+      background: var(--bg2); border: 1px solid var(--border);
+      padding: 0.35rem 0.85rem; border-radius: 8px;
+      font-size: 0.85rem; font-weight: 500; white-space: nowrap;
+    }
+    .fab-btn-small {
+      width: 44px; height: 44px; border-radius: 50%;
+      background: var(--bg3); border: 1px solid var(--border);
+      color: var(--text); cursor: pointer;
+      display: flex; align-items: center; justify-content: center;
+      transition: background var(--transition), border-color var(--transition);
+    }
+    .fab-btn-small svg { width: 18px; height: 18px; }
+    .fab-btn-small:hover { background: var(--accent); border-color: var(--accent); }
+
+    .fab-main {
+      width: 56px; height: 56px; border-radius: 50%;
+      background: var(--accent); border: none;
+      color: #fff; cursor: pointer; font-size: 1.5rem;
+      display: flex; align-items: center; justify-content: center;
+      box-shadow: 0 4px 20px rgba(255,107,53,0.4);
+      transition: transform var(--transition), box-shadow var(--transition);
+    }
+    .fab-main:hover {
+      transform: scale(1.08);
+      box-shadow: 0 6px 28px rgba(255,107,53,0.6);
+    }
+    .fab-main svg { width: 24px; height: 24px; transition: transform 0.25s ease; }
+    .fab-main.open svg { transform: rotate(45deg); }
+
+    /* ── MODAL BASE ── */
+    .modal-overlay {
+      position: fixed; inset: 0; z-index: 300;
+      background: rgba(0,0,0,0.75); backdrop-filter: blur(4px);
+      display: flex; align-items: center; justify-content: center;
+      padding: 1rem;
+      animation: fadeIn 0.15s ease;
+    }
+    .modal-overlay.hidden { display: none; }
+    @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+
+    .modal {
+      background: var(--bg2); border: 1px solid var(--border);
+      border-radius: 16px; width: 100%; max-width: 560px;
+      max-height: 90dvh; overflow-y: auto;
+      animation: slideUp 0.2s ease;
+    }
+    @keyframes slideUp {
+      from { opacity: 0; transform: translateY(20px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+    .modal-header {
+      display: flex; justify-content: space-between; align-items: center;
+      padding: 1.5rem 1.5rem 1rem;
+      border-bottom: 1px solid var(--border);
+    }
+    .modal-title {
+      font-family: var(--ff-title); font-size: 1.8rem; letter-spacing: 0.06em;
+    }
+    .modal-close {
+      background: none; border: none; color: var(--muted);
+      cursor: pointer; padding: 4px; border-radius: 6px;
+      transition: color var(--transition);
+    }
+    .modal-close:hover { color: var(--text); }
+    .modal-close svg { width: 20px; height: 20px; }
+    .modal-body { padding: 1.5rem; display: flex; flex-direction: column; gap: 1.25rem; }
+
+    /* ── FORM ELEMENTS ── */
+    .form-group { display: flex; flex-direction: column; gap: 0.4rem; }
+    label { font-size: 0.85rem; font-weight: 500; color: var(--muted); }
+    input[type=text], input[type=url], input[type=number],
+    select, textarea {
+      background: var(--bg3); border: 1px solid var(--border);
+      border-radius: 8px; padding: 0.75rem 1rem;
+      color: var(--text); font-family: var(--ff-body); font-size: 0.95rem;
+      outline: none; width: 100%;
+      transition: border-color var(--transition), box-shadow var(--transition);
+    }
+    input:focus, select:focus, textarea:focus {
+      border-color: var(--accent);
+      box-shadow: 0 0 0 3px rgba(255,107,53,0.12);
+    }
+    textarea { resize: vertical; min-height: 100px; }
+    select option { background: var(--bg3); }
+
+    .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; }
+
+    .btn-primary {
+      background: var(--accent); color: #fff; border: none;
+      padding: 0.85rem 1.5rem; border-radius: 8px;
+      font-family: var(--ff-title); font-size: 1.1rem; letter-spacing: 0.06em;
+      cursor: pointer; transition: background var(--transition), transform var(--transition);
+      display: flex; align-items: center; justify-content: center; gap: 0.5rem;
+    }
+    .btn-primary:hover { background: var(--accent2); transform: translateY(-1px); }
+    .btn-primary:disabled { opacity: 0.5; cursor: not-allowed; transform: none; }
+
+    .btn-secondary {
+      background: var(--bg3); color: var(--text); border: 1px solid var(--border);
+      padding: 0.85rem 1.5rem; border-radius: 8px;
+      font-family: var(--ff-body); font-size: 0.95rem; font-weight: 500;
+      cursor: pointer; transition: background var(--transition);
+    }
+    .btn-secondary:hover { background: var(--bg); }
+
+    .modal-footer {
+      padding: 1rem 1.5rem 1.5rem;
+      display: flex; gap: 0.75rem; justify-content: flex-end;
+    }
+
+    /* ── AI STATUS ── */
+    .ai-status {
+      background: rgba(255,107,53,0.08); border: 1px solid rgba(255,107,53,0.2);
+      border-radius: 8px; padding: 0.75rem 1rem;
+      font-size: 0.9rem; color: var(--accent);
+      display: flex; align-items: center; gap: 0.5rem;
+    }
+    .ai-status.hidden { display: none; }
+    .spinner {
+      width: 16px; height: 16px; border: 2px solid rgba(255,107,53,0.3);
+      border-top-color: var(--accent); border-radius: 50%;
+      animation: spin 0.8s linear infinite; flex-shrink: 0;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    /* ── DETAIL MODAL ── */
+    .detail-modal { max-width: 700px; }
+    .detail-hero {
+      width: 100%; aspect-ratio: 16/9; object-fit: cover;
+      background: var(--bg3); border-radius: 12px 12px 0 0;
+    }
+    .detail-hero-placeholder {
+      width: 100%; aspect-ratio: 16/9; background: var(--bg3);
+      border-radius: 12px 12px 0 0;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 5rem;
+    }
+    .detail-header { padding: 1.5rem 1.5rem 0; }
+    .detail-tags { display: flex; gap: 0.5rem; flex-wrap: wrap; margin-bottom: 0.75rem; }
+    .detail-title {
+      font-family: var(--ff-title); font-size: clamp(1.8rem, 4vw, 2.5rem);
+      letter-spacing: 0.04em; line-height: 1.05; margin-bottom: 0.75rem;
+    }
+    .detail-stats {
+      display: flex; gap: 1.5rem; flex-wrap: wrap; padding: 1rem 0;
+      border-top: 1px solid var(--border); border-bottom: 1px solid var(--border);
+      margin-bottom: 1.25rem;
+    }
+    .detail-stat { display: flex; flex-direction: column; gap: 0.1rem; }
+    .detail-stat-label { font-size: 0.75rem; color: var(--muted); text-transform: uppercase; letter-spacing: 0.06em; }
+    .detail-stat-value { font-weight: 600; color: var(--text); }
+
+    .detail-body { padding: 0 1.5rem 1.5rem; }
+    .detail-section-title {
+      font-family: var(--ff-title); font-size: 1.3rem; letter-spacing: 0.06em;
+      color: var(--accent); margin-bottom: 0.75rem;
+    }
+    .ingredients-list { list-style: none; display: flex; flex-direction: column; gap: 0.5rem; margin-bottom: 1.5rem; }
+    .ingredients-list li {
+      display: flex; align-items: baseline; gap: 0.5rem;
+      padding: 0.35rem 0; border-bottom: 1px solid var(--border); font-size: 0.95rem;
+    }
+    .ingredients-list li::before {
+      content: ''; width: 6px; height: 6px; border-radius: 50%;
+      background: var(--accent); flex-shrink: 0; margin-top: 4px;
+    }
+    .steps-list { list-style: none; display: flex; flex-direction: column; gap: 1rem; }
+    .steps-list li {
+      display: flex; gap: 1rem; align-items: flex-start; font-size: 0.95rem; line-height: 1.6;
+    }
+    .step-num {
+      font-family: var(--ff-title); font-size: 1.5rem; color: var(--accent);
+      line-height: 1; flex-shrink: 0; min-width: 28px;
+    }
+    .detail-source {
+      margin-top: 1.5rem; padding-top: 1rem; border-top: 1px solid var(--border);
+      font-size: 0.85rem; color: var(--muted);
+    }
+    .detail-source a { color: var(--accent); text-decoration: none; }
+    .detail-source a:hover { text-decoration: underline; }
+
+    /* ── TOAST ── */
+    .toast-container {
+      position: fixed; bottom: 1.5rem; left: 50%; transform: translateX(-50%);
+      z-index: 500; display: flex; flex-direction: column; gap: 0.5rem;
+      align-items: center; pointer-events: none;
+    }
+    .toast {
+      background: var(--bg3); border: 1px solid var(--border);
+      padding: 0.65rem 1.25rem; border-radius: 8px;
+      font-size: 0.9rem; font-weight: 500;
+      animation: toastIn 0.2s ease;
+      pointer-events: auto;
+    }
+    .toast.success { border-color: #4CAF50; color: #4CAF50; }
+    .toast.error   { border-color: #ff4444; color: #ff4444; }
+    @keyframes toastIn {
+      from { opacity:0; transform: translateY(8px); }
+      to   { opacity:1; transform: translateY(0); }
+    }
+
+    /* ── RESPONSIVE ── */
+    @media (max-width: 600px) {
+      .form-row { grid-template-columns: 1fr; }
+      .hero-title { font-size: 2.5rem; }
+      .fab { bottom: 1.5rem; right: 1rem; }
+    }
+  </style>
+</head>
+<body>
+
+<!-- HEADER -->
+<header>
+  <div class="logo">MIJN <span>RECEPTEN</span></div>
+  <div class="header-actions">
+    <button class="btn-icon" id="btn-settings" title="Instellingen" onclick="openSettings()">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/>
+      </svg>
+    </button>
+  </div>
+</header>
+
+<!-- MAIN -->
+<main>
+  <section class="hero">
+    <h1 class="hero-title">MIJN<br><span class="highlight">RECEPTEN</span></h1>
+    <div class="search-bar">
+      <span class="search-icon">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/>
+        </svg>
+      </span>
+      <input type="text" id="search-input" placeholder="Zoek een recept…" oninput="filterRecipes()" />
+    </div>
+    <div class="filter-bar" id="filter-bar">
+      <button class="filter-btn active" onclick="setFilter('alle', this)">Alle</button>
+      <button class="filter-btn" onclick="setFilter('vlees', this)">🥩 Vlees</button>
+      <button class="filter-btn" onclick="setFilter('vis', this)">🐟 Vis</button>
+      <button class="filter-btn" onclick="setFilter('vegetarisch', this)">🥦 Vegetarisch</button>
+      <button class="filter-btn" onclick="setFilter('bbq', this)">🔥 BBQ</button>
+      <button class="filter-btn" onclick="setFilter('soep', this)">🍲 Soep</button>
+      <button class="filter-btn" onclick="setFilter('nagerecht', this)">🍮 Nagerecht</button>
+    </div>
+  </section>
+
+  <div class="section-header">
+    <h2 class="section-title">RECEPTEN</h2>
+    <span class="recipe-count" id="recipe-count">0 recepten</span>
+  </div>
+
+  <div class="recipe-grid" id="recipe-grid"></div>
+  <div class="empty-state hidden" id="empty-state">
+    <div class="empty-icon">🍳</div>
+    <h3>GEEN RECEPTEN GEVONDEN</h3>
+    <p>Voeg je eerste recept toe via de + knop hieronder.</p>
+  </div>
+</main>
+
+<!-- FAB -->
+<div class="fab">
+  <div class="fab-menu hidden" id="fab-menu">
+    <div class="fab-item">
+      <span class="fab-label">Handmatig invoeren</span>
+      <button class="fab-btn-small" onclick="openManual(); closeFab();" title="Handmatig">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/>
+        </svg>
+      </button>
+    </div>
+    <div class="fab-item">
+      <span class="fab-label">Importeer via URL</span>
+      <button class="fab-btn-small" onclick="openUrl(); closeFab();" title="URL importeren">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/>
+          <path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/>
+        </svg>
+      </button>
+    </div>
+  </div>
+  <button class="fab-main" id="fab-main" onclick="toggleFab()" title="Recept toevoegen">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+      <path d="M12 5v14M5 12h14"/>
+    </svg>
+  </button>
+</div>
+
+<!-- MODAL: URL IMPORT -->
+<div class="modal-overlay hidden" id="modal-url">
+  <div class="modal">
+    <div class="modal-header">
+      <h2 class="modal-title">IMPORTEER VIA URL</h2>
+      <button class="modal-close" onclick="closeModal('modal-url')">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6 6 18M6 6l12 12"/></svg>
+      </button>
+    </div>
+    <div class="modal-body">
+      <div class="form-group">
+        <label>URL van het recept</label>
+        <input type="url" id="url-input" placeholder="https://www.ah.nl/allerhande/recept/…" />
+      </div>
+      <div class="ai-status hidden" id="url-status">
+        <span class="spinner"></span>
+        <span id="url-status-text">Recept ophalen…</span>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn-secondary" onclick="closeModal('modal-url')">Annuleren</button>
+      <button class="btn-primary" onclick="importUrl()">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+        Importeer
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL: MANUAL ADD -->
+<div class="modal-overlay hidden" id="modal-manual">
+  <div class="modal">
+    <div class="modal-header">
+      <h2 class="modal-title">NIEUW RECEPT</h2>
+      <button class="modal-close" onclick="closeModal('modal-manual')">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6 6 18M6 6l12 12"/></svg>
+      </button>
+    </div>
+    <div class="modal-body">
+      <div class="form-group">
+        <label>Naam *</label>
+        <input type="text" id="m-name" placeholder="Bijv. Killer Chili" />
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label>Categorie</label>
+          <select id="m-cat">
+            <option value="vlees">🥩 Vlees</option>
+            <option value="vis">🐟 Vis</option>
+            <option value="vegetarisch">🥦 Vegetarisch</option>
+            <option value="bbq">🔥 BBQ</option>
+            <option value="soep">🍲 Soep</option>
+            <option value="nagerecht">🍮 Nagerecht</option>
+            <option value="overig">🍴 Overig</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>Personen</label>
+          <input type="number" id="m-servings" value="4" min="1" max="20" />
+        </div>
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label>Bereidingstijd (min)</label>
+          <input type="number" id="m-time" placeholder="45" min="1" />
+        </div>
+        <div class="form-group">
+          <label>Moeilijkheid</label>
+          <select id="m-diff">
+            <option value="Makkelijk">Makkelijk</option>
+            <option value="Gemiddeld" selected>Gemiddeld</option>
+            <option value="Moeilijk">Moeilijk</option>
+          </select>
+        </div>
+      </div>
+      <div class="form-group">
+        <label>Ingrediënten (één per regel)</label>
+        <textarea id="m-ingredients" placeholder="500 gr rundergehakt&#10;4 sjalotjes&#10;…"></textarea>
+      </div>
+      <div class="form-group">
+        <label>Bereidingswijze (één stap per regel)</label>
+        <textarea id="m-steps" placeholder="Verhit de olie en bak de sjalotjes glazig.&#10;Voeg het gehakt toe en bak rul.&#10;…" style="min-height:140px"></textarea>
+      </div>
+      <div class="form-group">
+        <label>Emoji (optioneel)</label>
+        <input type="text" id="m-emoji" placeholder="🌶️" maxlength="4" />
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn-secondary" onclick="closeModal('modal-manual')">Annuleren</button>
+      <button class="btn-primary" onclick="saveManual()">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg>
+        Opslaan
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL: DETAIL VIEW -->
+<div class="modal-overlay hidden" id="modal-detail">
+  <div class="modal detail-modal">
+    <div id="detail-content"></div>
+  </div>
+</div>
+
+<!-- MODAL: SETTINGS -->
+<div class="modal-overlay hidden" id="modal-settings">
+  <div class="modal">
+    <div class="modal-header">
+      <h2 class="modal-title">INSTELLINGEN</h2>
+      <button class="modal-close" onclick="closeModal('modal-settings')">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6 6 18M6 6l12 12"/></svg>
+      </button>
+    </div>
+    <div class="modal-body">
+      <div class="form-group">
+        <label>Anthropic API Key (voor URL import)</label>
+        <input type="text" id="api-key-input" placeholder="sk-ant-…" />
+        <small style="color:var(--muted);font-size:0.8rem">Wordt lokaal opgeslagen in je browser. Nooit gedeeld.</small>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn-secondary" onclick="closeModal('modal-settings')">Annuleren</button>
+      <button class="btn-primary" onclick="saveSettings()">Opslaan</button>
+    </div>
+  </div>
+</div>
+
+<!-- TOASTS -->
+<div class="toast-container" id="toast-container"></div>
+
+<script>
+// ── STATE ──────────────────────────────────────────────
+let recipes = JSON.parse(localStorage.getItem('recipes') || '[]');
+let activeFilter = 'alle';
+let fabOpen = false;
+
+// ── SEED DATA: Killer Chili ──────────────────────────
+const SEED = {
+  id: 'seed-1',
+  name: 'Killer Chili',
+  category: 'vlees',
+  tags: ['bbq'],
+  servings: 4,
+  time: 90,
+  difficulty: 'Gemiddeld',
+  emoji: '🌶️',
+  source: 'Handgeschreven recept',
+  sourceUrl: null,
+  ingredients: [
+    '500 gr rundergehakt',
+    '4 gesneden sjalotjes',
+    '350 ml runderbouillon',
+    '3 eetl. tomatenpuree',
+    '1 eetl. bloem',
+    '1 gehakte gele paprika',
+    '2 teentjes knoflook',
+    '1 scheut olijfolie',
+    '400 gr kidneybonen uit blik (uitgelekt)',
+    '2 fijngehakte Spaanse pepers',
+    '½ wijnglas port',
+    '1 theel. gehakte peterselie'
+  ],
+  steps: [
+    'Verhit de olie in een grote koekenpan en fruit de sjalotjes tot ze glazig zijn.',
+    'Gooi de knoflook erbij en voeg na twee minuten het vlees toe. Roer het gehakt telkens om zodat het kruimelig wordt.',
+    'Als er geen roze vlees meer te ontdekken is, giet je er een half glas port bij. Laat het vlees de port opnemen.',
+    'Bestrooi het met de bloem en doe de tomatenpuree erbij.',
+    'Zet het vuur lager en giet de bouillon in de pan. Roer ook de Spaanse pepers en de kidneybonen erdoor.',
+    'Doe het deksel op de pan en laat het geheel op een laag vuurtje zo\'n 45 minuten sudderen.',
+    'Gooi er nu de paprika, peterselie en de rest van de port erbij en laat het geheel nu zonder deksel nog een halfuur pruttelen.',
+    'Serveer met rijst, taco\'s of grove stukken stokbrood. De chili smaakt nog lekkerder als je het een dag laat staan!'
+  ]
+};
+
+if (!recipes.find(r => r.id === 'seed-1')) {
+  recipes.unshift(SEED);
+  save();
+}
+
+// ── STORAGE ────────────────────────────────────────────
+function save() {
+  localStorage.setItem('recipes', JSON.stringify(recipes));
+}
+
+// ── RENDER ─────────────────────────────────────────────
+const CATEGORY_EMOJI = {
+  vlees: '🥩', vis: '🐟', vegetarisch: '🥦',
+  bbq: '🔥', soep: '🍲', nagerecht: '🍮', overig: '🍴'
+};
+
+function renderGrid() {
+  const q = document.getElementById('search-input').value.toLowerCase();
+  const grid = document.getElementById('recipe-grid');
+  const empty = document.getElementById('empty-state');
+
+  let filtered = recipes.filter(r => {
+    const matchCat = activeFilter === 'alle' || r.category === activeFilter || (r.tags || []).includes(activeFilter);
+    const matchQ   = !q || r.name.toLowerCase().includes(q) ||
+                     (r.ingredients || []).join(' ').toLowerCase().includes(q);
+    return matchCat && matchQ;
+  });
+
+  document.getElementById('recipe-count').textContent = `${filtered.length} recept${filtered.length !== 1 ? 'en' : ''}`;
+
+  if (!filtered.length) {
+    grid.innerHTML = '';
+    empty.classList.remove('hidden');
+    return;
+  }
+  empty.classList.add('hidden');
+
+  grid.innerHTML = filtered.map((r, i) => `
+    <div class="recipe-card" onclick="openDetail('${r.id}')" style="animation-delay:${i * 0.04}s">
+      <div class="card-thumb-placeholder">${r.emoji || CATEGORY_EMOJI[r.category] || '🍴'}</div>
+      <button class="card-delete" onclick="event.stopPropagation(); deleteRecipe('${r.id}')" title="Verwijder">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/>
+          <path d="M10 11v6M14 11v6"/><path d="M9 6V4h6v2"/>
+        </svg>
+      </button>
+      <div class="card-body">
+        <div class="card-meta">
+          <span class="tag">${r.category}</span>
+          ${r.sourceUrl ? `<span class="card-source">${new URL(r.sourceUrl).hostname.replace('www.','')}</span>` : ''}
+        </div>
+        <div class="card-title">${r.name.toUpperCase()}</div>
+        <div class="card-info">
+          ${r.time ? `<span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>${r.time} min</span>` : ''}
+          ${r.servings ? `<span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>${r.servings} pers.</span>` : ''}
+          ${r.difficulty ? `<span>${r.difficulty}</span>` : ''}
+        </div>
+      </div>
+    </div>
+  `).join('');
+}
+
+function filterRecipes() { renderGrid(); }
+
+function setFilter(cat, btn) {
+  activeFilter = cat;
+  document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  renderGrid();
+}
+
+// ── FAB ────────────────────────────────────────────────
+function toggleFab() {
+  fabOpen = !fabOpen;
+  document.getElementById('fab-menu').classList.toggle('hidden', !fabOpen);
+  document.getElementById('fab-main').classList.toggle('open', fabOpen);
+}
+function closeFab() {
+  fabOpen = false;
+  document.getElementById('fab-menu').classList.add('hidden');
+  document.getElementById('fab-main').classList.remove('open');
+}
+
+// ── MODALS ─────────────────────────────────────────────
+function openModal(id) { document.getElementById(id).classList.remove('hidden'); }
+function closeModal(id) { document.getElementById(id).classList.add('hidden'); }
+function openManual()   { openModal('modal-manual'); }
+function openUrl()      { openModal('modal-url'); }
+function openSettings() {
+  document.getElementById('api-key-input').value = localStorage.getItem('anthropic_key') || '';
+  openModal('modal-settings');
+}
+function saveSettings() {
+  const key = document.getElementById('api-key-input').value.trim();
+  if (key) localStorage.setItem('anthropic_key', key);
+  else localStorage.removeItem('anthropic_key');
+  closeModal('modal-settings');
+  toast('Instellingen opgeslagen', 'success');
+}
+
+// Click outside to close
+document.querySelectorAll('.modal-overlay').forEach(el => {
+  el.addEventListener('click', e => { if (e.target === el) el.classList.add('hidden'); });
+});
+
+// ── SAVE MANUAL ────────────────────────────────────────
+function saveManual() {
+  const name = document.getElementById('m-name').value.trim();
+  if (!name) { toast('Vul een naam in', 'error'); return; }
+
+  const recipe = {
+    id: Date.now().toString(),
+    name,
+    category: document.getElementById('m-cat').value,
+    tags: [],
+    servings: parseInt(document.getElementById('m-servings').value) || 4,
+    time: parseInt(document.getElementById('m-time').value) || null,
+    difficulty: document.getElementById('m-diff').value,
+    emoji: document.getElementById('m-emoji').value || null,
+    source: 'Handgeschreven recept',
+    sourceUrl: null,
+    ingredients: document.getElementById('m-ingredients').value.split('\n').map(s => s.trim()).filter(Boolean),
+    steps: document.getElementById('m-steps').value.split('\n').map(s => s.trim()).filter(Boolean),
+  };
+
+  recipes.unshift(recipe);
+  save();
+  renderGrid();
+  closeModal('modal-manual');
+
+  // Reset form
+  ['m-name','m-ingredients','m-steps','m-emoji','m-time'].forEach(id => document.getElementById(id).value = '');
+  document.getElementById('m-servings').value = '4';
+
+  toast('Recept opgeslagen! 🎉', 'success');
+}
+
+// ── URL IMPORT ─────────────────────────────────────────
+async function importUrl() {
+  const url = document.getElementById('url-input').value.trim();
+  if (!url) { toast('Vul een URL in', 'error'); return; }
+
+  const apiKey = localStorage.getItem('anthropic_key');
+  if (!apiKey) {
+    toast('Sla eerst een API key op in Instellingen ⚙️', 'error');
+    openSettings();
+    return;
+  }
+
+  const status = document.getElementById('url-status');
+  const statusText = document.getElementById('url-status-text');
+  status.classList.remove('hidden');
+  statusText.textContent = 'Pagina ophalen…';
+
+  try {
+    // Step 1: fetch page
+    statusText.textContent = 'Recept analyseren met AI…';
+
+    const resp = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'x-api-key': apiKey,
+        'anthropic-version': '2023-06-01',
+        'anthropic-dangerous-direct-browser-access': 'true'
+      },
+      body: JSON.stringify({
+        model: 'claude-sonnet-4-20250514',
+        max_tokens: 2000,
+        tools: [{ type: 'web_search_20250305', name: 'web_search' }],
+        messages: [{
+          role: 'user',
+          content: `Haal het recept op van deze URL: ${url}
+
+Geef ALLEEN een JSON object terug, geen uitleg. Formaat:
+{
+  "name": "Naam van het recept",
+  "category": "vlees|vis|vegetarisch|bbq|soep|nagerecht|overig",
+  "emoji": "passend emoji",
+  "servings": 4,
+  "time": 45,
+  "difficulty": "Makkelijk|Gemiddeld|Moeilijk",
+  "ingredients": ["ingrediënt 1", "ingrediënt 2"],
+  "steps": ["stap 1", "stap 2"]
+}
+
+Kies de juiste categorie op basis van het recept. Geef alleen het JSON object terug.`
+        }]
+      })
+    });
+
+    const data = await resp.json();
+    if (!resp.ok) throw new Error(data.error?.message || 'API fout');
+
+    const text = data.content.map(b => b.text || '').join('');
+    const jsonMatch = text.match(/\{[\s\S]*\}/);
+    if (!jsonMatch) throw new Error('Geen recept gevonden in de pagina');
+
+    const parsed = JSON.parse(jsonMatch[0]);
+    const recipe = {
+      id: Date.now().toString(),
+      name: parsed.name || 'Onbekend recept',
+      category: parsed.category || 'overig',
+      tags: [],
+      emoji: parsed.emoji || null,
+      servings: parsed.servings || 4,
+      time: parsed.time || null,
+      difficulty: parsed.difficulty || 'Gemiddeld',
+      source: new URL(url).hostname.replace('www.', ''),
+      sourceUrl: url,
+      ingredients: parsed.ingredients || [],
+      steps: parsed.steps || [],
+    };
+
+    recipes.unshift(recipe);
+    save();
+    renderGrid();
+    closeModal('modal-url');
+    document.getElementById('url-input').value = '';
+    toast(`"${recipe.name}" toegevoegd! 🎉`, 'success');
+
+  } catch (err) {
+    toast('Fout: ' + err.message, 'error');
+  } finally {
+    status.classList.add('hidden');
+  }
+}
+
+// ── DETAIL VIEW ────────────────────────────────────────
+function openDetail(id) {
+  const r = recipes.find(x => x.id === id);
+  if (!r) return;
+
+  const html = `
+    <div style="position:relative">
+      <div class="detail-hero-placeholder">${r.emoji || CATEGORY_EMOJI[r.category] || '🍴'}</div>
+      <button class="modal-close" onclick="closeModal('modal-detail')"
+        style="position:absolute;top:0.75rem;right:0.75rem;background:rgba(13,13,13,0.8);
+               border:1px solid var(--border);border-radius:8px;padding:6px;">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M18 6 6 18M6 6l12 12"/>
+        </svg>
+      </button>
+    </div>
+    <div class="detail-header">
+      <div class="detail-tags">
+        <span class="tag">${r.category}</span>
+        ${r.difficulty ? `<span class="tag" style="background:rgba(255,255,255,0.06);color:var(--muted)">${r.difficulty}</span>` : ''}
+      </div>
+      <h2 class="detail-title">${r.name.toUpperCase()}</h2>
+      <div class="detail-stats">
+        ${r.time ? `<div class="detail-stat"><span class="detail-stat-label">⏱ Tijd</span><span class="detail-stat-value">${r.time} min</span></div>` : ''}
+        ${r.servings ? `<div class="detail-stat"><span class="detail-stat-label">👥 Personen</span><span class="detail-stat-value">${r.servings}</span></div>` : ''}
+        ${r.difficulty ? `<div class="detail-stat"><span class="detail-stat-label">📊 Niveau</span><span class="detail-stat-value">${r.difficulty}</span></div>` : ''}
+      </div>
+    </div>
+    <div class="detail-body">
+      ${r.ingredients?.length ? `
+        <p class="detail-section-title">INGREDIËNTEN</p>
+        <ul class="ingredients-list">
+          ${r.ingredients.map(i => `<li>${i}</li>`).join('')}
+        </ul>
+      ` : ''}
+      ${r.steps?.length ? `
+        <p class="detail-section-title">BEREIDING</p>
+        <ol class="steps-list">
+          ${r.steps.map((s, i) => `<li><span class="step-num">${i+1}</span><span>${s}</span></li>`).join('')}
+        </ol>
+      ` : ''}
+      ${r.sourceUrl ? `
+        <div class="detail-source">
+          Bron: <a href="${r.sourceUrl}" target="_blank" rel="noopener">${r.source}</a>
+        </div>
+      ` : r.source ? `<div class="detail-source">Bron: ${r.source}</div>` : ''}
+    </div>
+  `;
+
+  document.getElementById('detail-content').innerHTML = html;
+  openModal('modal-detail');
+}
+
+// ── DELETE ─────────────────────────────────────────────
+function deleteRecipe(id) {
+  if (!confirm('Recept verwijderen?')) return;
+  recipes = recipes.filter(r => r.id !== id);
+  save();
+  renderGrid();
+  toast('Recept verwijderd', 'success');
+}
+
+// ── TOAST ──────────────────────────────────────────────
+function toast(msg, type = '') {
+  const c = document.getElementById('toast-container');
+  const el = document.createElement('div');
+  el.className = `toast ${type}`;
+  el.textContent = msg;
+  c.appendChild(el);
+  setTimeout(() => el.remove(), 3000);
+}
+
+// ── KEYBOARD ───────────────────────────────────────────
+document.addEventListener('keydown', e => {
+  if (e.key === 'Escape') {
+    ['modal-url','modal-manual','modal-detail','modal-settings'].forEach(id => closeModal(id));
+    closeFab();
+  }
+});
+
+// ── INIT ───────────────────────────────────────────────
+renderGrid();
+</script>
+
+<!-- SERVICE WORKER REGISTRATION -->
+<script>
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('./sw.js').catch(() => {});
+  });
+}
+</script>
+
+</body>
+</html>
