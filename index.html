@@ -604,7 +604,7 @@ async function importUrl() {
       method: 'POST',
       headers: { 'Content-Type':'application/json','x-api-key':key,'anthropic-version':'2023-06-01','anthropic-dangerous-direct-browser-access':'true' },
       body: JSON.stringify({
-        model:'claude-sonnet-4-20250514', max_tokens:2000,
+        model:'claude-sonnet-4-6', max_tokens:2000,
         tools:[{type:'web_search_20250305',name:'web_search'}],
         messages:[{role:'user',content:`Haal het recept op van deze URL: ${url}\n\nGeef ALLEEN een JSON object terug, geen uitleg:\n{"name":"...","category":"vlees|vis|vegetarisch|bbq|soep|pasta|nagerecht|overig","emoji":"...","servings":4,"time":45,"difficulty":"Makkelijk|Gemiddeld|Moeilijk","ingredients":["..."],"steps":["..."]}`}]
       })
@@ -641,7 +641,7 @@ async function handlePhotoFile(input) {
       method: 'POST',
       headers: { 'Content-Type':'application/json','x-api-key':key,'anthropic-version':'2023-06-01','anthropic-dangerous-direct-browser-access':'true' },
       body: JSON.stringify({
-        model:'claude-sonnet-4-20250514', max_tokens:2000,
+        model:'claude-sonnet-4-6', max_tokens:2000,
         messages:[{role:'user',content:[
           {type:'image',source:{type:'base64',media_type:mt,data:b64}},
           {type:'text',text:'Dit is een foto van een handgeschreven recept. Lees het volledig uit. Geef ALLEEN een JSON object terug:\n{"name":"...","category":"vlees|vis|vegetarisch|bbq|soep|pasta|nagerecht|overig","emoji":"...","servings":4,"time":45,"difficulty":"Makkelijk|Gemiddeld|Moeilijk","ingredients":["..."],"steps":["..."]}'}
