@@ -241,10 +241,6 @@ textarea{resize:vertical;min-height:88px}
   <div class="main-header">
     <div class="main-logo">Cucina <span>Hendriksen</span></div>
     <div class="header-btns">
-      <button class="hbtn" id="btn-view" onclick="toggleView()" title="Weergave wisselen">
-        <svg id="icon-grid" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg>
-        <svg id="icon-list" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="display:none"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/></svg>
-      </button>
       <button class="hbtn" id="btn-shopping" onclick="showShopping()" title="Boodschappenlijst">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 2 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"/><line x1="3" y1="6" x2="21" y2="6"/><path d="M16 10a4 4 0 0 1-8 0"/></svg>
       </button>
@@ -273,7 +269,7 @@ textarea{resize:vertical;min-height:88px}
     <span class="list-title">Recepten</span>
     <span class="list-count" id="list-count"></span>
   </div>
-  <div class="recipe-grid" id="recipe-grid">
+  <div class="recipe-list-view" id="recipe-grid">
     <div class="empty hidden" id="empty-state">
       <div class="empty-icon">🍳</div>
       <h3>Nog geen recepten</h3>
@@ -426,7 +422,6 @@ const SHOP_STORE = 'cucina_shopping';
 let recipes = [], activeFilter = 'alle', fabOpen = false;
 let currentRecipeId = null, currentServings = 4, baseServings = 4;
 let shoppingList = JSON.parse(localStorage.getItem(SHOP_STORE) || '[]');
-let viewMode = localStorage.getItem('cucina_view') || 'grid';
 
 // ── SUPABASE ──────────────────────────────────────
 async function sbFetch(path, opts = {}) {
@@ -503,15 +498,6 @@ function showShopping() {
   const s = document.getElementById('screen-shopping');
   s.classList.remove('hidden'); s.style.display = 'flex';
   renderShopping();
-}
-
-// ── VIEW TOGGLE ───────────────────────────────────
-function toggleView() {
-  viewMode = viewMode === 'grid' ? 'list' : 'grid';
-  localStorage.setItem('cucina_view', viewMode);
-  const grid = document.getElementById('recipe-grid');
-  grid.innerHTML = '';
-  setTimeout(() => renderList(), 10);
 }
 
 // ── LIST (GRID) ───────────────────────────────────
@@ -956,6 +942,15 @@ function toast(msg, type='') {
 loadRecipes();
 updateShoppingBadge();
 </script>
-<script>if('serviceWorker'in navigator)window.addEventListener('load',()=>navigator.serviceWorker.register('./sw.js').catch(()=>{}));</script>
+<script>
+// Unregister any existing service workers to prevent conflicts
+if ('serviceWorker' in navigator) {
+  navigator.serviceWorker.getRegistrations().then(regs => {
+    regs.forEach(reg => {
+      if (reg.scope.includes('recepten')) reg.unregister();
+    });
+  });
+}
+</script>
 </body>
 </html>
