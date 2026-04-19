@@ -285,6 +285,7 @@ textarea{resize:vertical;min-height:88px}
     <button class="fb" onclick="setFilter('soep',this)">&#129490; Soep</button>
     <button class="fb" onclick="setFilter('pasta',this)">&#127837; Pasta</button>
     <button class="fb" onclick="setFilter('nagerecht',this)">&#127854; Nagerecht</button>
+    <button class="fb" onclick="setFilter('brood',this)">&#127838; Brood</button>
   </div>
   <div class="lh"><span class="lt">Recepten</span><span class="lc" id="lcnt"></span></div>
   <div class="rl" id="rlist"></div>
@@ -384,7 +385,12 @@ textarea{resize:vertical;min-height:88px}
       <div class="fg"><label>Naam *</label><input type="text" id="mn2" placeholder="Bijv. Spaghetti Carbonara"/></div>
       <div class="fr">
         <div class="fg"><label>Categorie</label>
-          <select id="mc2"><option value="vlees">Vlees</option><option value="vis">Vis</option><option value="vegetarisch">Vegetarisch</option><option value="bbq">BBQ</option><option value="soep">Soep</option><option value="pasta">Pasta</option><option value="nagerecht">Nagerecht</option><option value="overig">Overig</option></select>
+          <input type="text" id="mc2" list="catlist" placeholder="vlees, pasta, brood..."/>
+          <datalist id="catlist">
+            <option value="vlees"/><option value="vis"/><option value="vegetarisch"/>
+            <option value="bbq"/><option value="soep"/><option value="pasta"/>
+            <option value="nagerecht"/><option value="brood"/><option value="overig"/>
+          </datalist>
         </div>
         <div class="fg"><label>Personen</label><input type="number" id="ms" value="4" min="1" max="20"/></div>
       </div>
@@ -521,7 +527,7 @@ function show(id){ document.getElementById(id).classList.remove('hide'); }
 function hide(id){ document.getElementById(id).classList.add('hide'); }
 
 // ── LIST ──────────────────────────────
-var CE = { vlees:'&#129385;', vis:'&#128032;', vegetarisch:'&#129382;', bbq:'&#128293;', soep:'&#129490;', pasta:'&#127837;', nagerecht:'&#127854;', overig:'&#127860;' };
+var CE = { vlees:'&#129385;', vis:'&#128032;', vegetarisch:'&#129382;', bbq:'&#128293;', soep:'&#129490;', pasta:'&#127837;', nagerecht:'&#127854;', brood:'&#127838;', overig:'&#127860;' };
 
 function renderList() {
   var q = (document.getElementById('srch').value || '').toLowerCase();
