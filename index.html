@@ -56,6 +56,8 @@ html,body{height:100%;background:var(--cr);color:var(--tx);font-family:'DM Sans'
 .sw{padding:.75rem 1rem .5rem;background:var(--wh);border-bottom:1px solid var(--br);flex-shrink:0}
 .sb{position:relative}
 .sb input{width:100%;background:var(--bp);border:1px solid var(--br);border-radius:8px;padding:.6rem 1rem .6rem 2.4rem;color:var(--tx);font-family:'DM Sans',sans-serif;font-size:.88rem;outline:none}
+.gen-btn{margin:.4rem 0 0;background:var(--bp);border:1px solid var(--br);border-radius:8px;padding:.6rem 1rem;cursor:pointer;display:flex;align-items:center;gap:.65rem;width:100%;transition:border-color .2s}
+.gen-btn:hover{border-color:var(--bm)}
 .sb input:focus{border-color:var(--bm)}.sb input::placeholder{color:var(--tl)}
 .si{position:absolute;left:.7rem;top:50%;transform:translateY(-50%);color:var(--tl)}.si svg{width:15px;height:15px}
 .fs{display:flex;gap:.4rem;overflow-x:auto;padding:.5rem 1rem;background:var(--wh);border-bottom:1px solid var(--br);flex-shrink:0;scrollbar-width:none}
@@ -226,6 +228,8 @@ textarea{resize:vertical;min-height:88px}
 .bs2{background:var(--bp);color:var(--tx);border:1px solid var(--br);padding:.75rem 1.1rem;border-radius:8px;font-family:'DM Sans',sans-serif;font-size:.88rem;cursor:pointer}
 .ai{background:rgba(46,109,164,.08);border:1px solid rgba(46,109,164,.2);border-radius:8px;padding:.65rem .85rem;font-size:.83rem;color:var(--bm);display:flex;align-items:center;gap:.5rem}
 .ai.hide{display:none}
+.gtag{background:var(--c2);border:1px solid var(--br);border-radius:99px;padding:.25rem .7rem;font-size:.75rem;color:var(--tm);cursor:pointer;font-family:'DM Sans',sans-serif}
+.gtag:hover{background:var(--bp);border-color:var(--bm)}
 .sp2{width:14px;height:14px;border:2px solid rgba(46,109,164,.2);border-top-color:var(--bm);border-radius:50%;animation:sp .8s linear infinite;flex-shrink:0}
 @keyframes sp{to{transform:rotate(360deg)}}
 .tw{position:fixed;bottom:1.5rem;left:50%;transform:translateX(-50%);z-index:500;display:flex;flex-direction:column;gap:.4rem;align-items:center;pointer-events:none}
@@ -288,6 +292,11 @@ textarea{resize:vertical;min-height:88px}
       <span class="si"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg></span>
       <input type="text" id="srch" placeholder="Zoek een recept..." oninput="renderList()"/>
     </div>
+    <button class="gen-btn" onclick="openMod('mgen')">
+      <span style="font-size:1rem">&#10024;</span>
+      <span style="flex:1;text-align:left;font-size:.88rem;color:var(--tm)">Bedenk een recept...</span>
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--tl)" stroke-width="2"><polyline points="9 18 15 12 9 6"/></svg>
+    </button>
   </div>
   <div class="fs" id="fbar">
     <button class="fb act" onclick="setFilter('alle',this)">Alle</button>
@@ -443,6 +452,37 @@ textarea{resize:vertical;min-height:88px}
       <div id="menu-result" style="margin-top:.75rem"></div>
     </div>
     <div class="mf"><button class="bs2" onclick="closeMod('mmenu')">Sluiten</button></div>
+  </div>
+</div>
+
+<!-- MODAL: GENERATOR -->
+<div class="ov hide" id="mgen">
+  <div class="mo">
+    <div class="moh"></div>
+    <div class="mhd"><span class="mht">&#10024; Bedenk een recept</span><button class="mc" onclick="closeMod('mgen')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6 6 18M6 6l12 12"/></svg></button></div>
+    <div class="mb">
+      <div class="fg">
+        <label>Wat wil je gebruiken of eten?</label>
+        <textarea id="gen-input" placeholder="bijv. kip, verse groenten, curry&#10;of: iets met pasta en zalm&#10;of: een snelle vegetarische maaltijd" style="min-height:90px"></textarea>
+      </div>
+      <div>
+        <label style="display:block;margin-bottom:.4rem">Suggesties</label>
+        <div style="display:flex;gap:.4rem;flex-wrap:wrap">
+          <button class="gtag" onclick="setGenInput('pasta en tomaat')">pasta en tomaat</button>
+          <button class="gtag" onclick="setGenInput('zalm en citroen')">zalm en citroen</button>
+          <button class="gtag" onclick="setGenInput('gehakt en aardappel')">gehakt en aardappel</button>
+          <button class="gtag" onclick="setGenInput('vegetarisch')">vegetarisch</button>
+          <button class="gtag" onclick="setGenInput('kip en rijst')">kip en rijst</button>
+          <button class="gtag" onclick="setGenInput('iets snels')">iets snels</button>
+        </div>
+      </div>
+      <div class="ai hide" id="gen-status"><span class="sp2"></span><span id="gen-status-txt">Recept bedenken...</span></div>
+      <div id="gen-result"></div>
+    </div>
+    <div class="mf">
+      <button class="bs2" onclick="closeMod('mgen')">Sluiten</button>
+      <button class="bp2" onclick="runGenerator()">&#10024; Genereer</button>
+    </div>
   </div>
 </div>
 
@@ -1328,6 +1368,107 @@ function _renderMenu() {
   box.innerHTML = html;
 }
 
+
+// ── RECIPE GENERATOR ─────────────────
+function setGenInput(val) {
+  document.getElementById('gen-input').value = val;
+}
+
+function runGenerator() {
+  var input = (document.getElementById('gen-input').value || '').trim();
+  if (!input) { toast('Typ wat je wil maken', 'er'); return; }
+  var key = getAK();
+  if (!key) { toast('Sla eerst een API key op', 'er'); closeMod('mgen'); openSettings(); return; }
+  var status = document.getElementById('gen-status');
+  var statusTxt = document.getElementById('gen-status-txt');
+  var result = document.getElementById('gen-result');
+  status.classList.remove('hide');
+  statusTxt.textContent = 'Recept bedenken...';
+  result.innerHTML = '';
+
+  fetch('https://api.anthropic.com/v1/messages', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', 'x-api-key': key, 'anthropic-version': '2023-06-01', 'anthropic-dangerous-direct-browser-access': 'true' },
+    body: JSON.stringify({
+      model: 'claude-sonnet-4-6', max_tokens: 1500,
+      system: 'Je bent een professionele kok. Bedenk serieuze, bestaande of kloppende recepten. Geen fantasy gerechten. Schrijf in het Nederlands. Geef ALLEEN een geldig JSON object terug, geen uitleg.',
+      messages: [{ role: 'user', content: 'Bedenk een lekker, serieus recept met: ' + input + '. Geef ALLEEN een JSON object terug met velden: name, category (vlees/kip/vis/vegetarisch/pasta/soep/nagerecht/brood/overig), emoji, servings, time, difficulty (Makkelijk/Gemiddeld/Moeilijk), ingredients (array), steps (array).' }]
+    })
+  }).then(function(r){ return r.json(); }).then(function(data) {
+    if (data.error) throw new Error(data.error.message);
+    var txt = (data.content||[]).map(function(b){ return b.text||''; }).join('').trim();
+    var cleaned = txt.replace(/```json|```/g, '').trim();
+    var parsed;
+    try { parsed = JSON.parse(cleaned); } catch(e) {
+      var m = cleaned.match(/\{[\s\S]*\}/);
+      if (!m) throw new Error('Kon geen recept genereren');
+      parsed = JSON.parse(m[0]);
+    }
+    status.classList.add('hide');
+    _showGenResult(parsed);
+  }).catch(function(e) {
+    status.classList.add('hide');
+    toast('Fout: ' + e.message, 'er');
+  });
+}
+
+function _showGenResult(r) {
+  var result = document.getElementById('gen-result');
+  var em = r.emoji || CE[r.category] || '&#127860;';
+  var ings = (r.ingredients||[]).map(function(i){ return '<li style="padding:.15rem 0;font-size:.85rem;border-bottom:1px solid var(--br)">' + i + '</li>'; }).join('');
+  var steps = (r.steps||[]).map(function(s,i){ return '<div style="display:flex;gap:.6rem;margin-bottom:.4rem"><span style="font-family:Playfair Display,serif;font-size:1.1rem;font-weight:700;color:var(--or);flex-shrink:0;min-width:18px">' + (i+1) + '</span><span style="font-size:.85rem;line-height:1.65">' + s + '</span></div>'; }).join('');
+
+  result.innerHTML = '<div style="background:var(--wh);border:1px solid var(--br);border-radius:12px;overflow:hidden;margin-top:.5rem">' +
+    '<div style="background:var(--bd);padding:.85rem 1rem;display:flex;align-items:center;gap:.75rem">' +
+      '<div style="font-size:2rem">' + em + '</div>' +
+      '<div><div style="font-family:Playfair Display,serif;font-size:1.05rem;color:white;font-weight:700">' + r.name + '</div>' +
+      '<div style="font-size:.72rem;color:rgba(255,255,255,.65);margin-top:.1rem">' + (r.category||'') + (r.time ? ' &nbsp;·&nbsp; ' + r.time + ' min' : '') + ' &nbsp;·&nbsp; ' + (r.servings||4) + ' pers.</div></div>' +
+    '</div>' +
+    '<div style="padding:.85rem 1rem">' +
+      '<div style="font-family:Playfair Display,serif;font-size:.9rem;font-weight:700;color:var(--bd);margin-bottom:.4rem">Ingredienten</div>' +
+      '<ul style="list-style:none">' + ings + '</ul>' +
+      '<div style="font-family:Playfair Display,serif;font-size:.9rem;font-weight:700;color:var(--bd);margin:1rem 0 .4rem">Bereiding</div>' +
+      steps +
+    '</div>' +
+    '<div style="display:flex;gap:.5rem;padding:.85rem 1rem;border-top:1px solid var(--br)">' +
+      '<button onclick="_saveGenRecipe()" style="flex:1;background:var(--bd);color:white;border:none;border-radius:8px;padding:.7rem;font-family:DM Sans,sans-serif;font-size:.85rem;font-weight:600;cursor:pointer">&#10003; Opslaan</button>' +
+      '<button onclick="_genToShopping()" style="background:var(--bp);color:var(--bd);border:1px solid var(--br);border-radius:8px;padding:.7rem .9rem;font-size:1rem;cursor:pointer">&#128722;</button>' +
+      '<button onclick="_discardGen()" style="background:var(--bp);color:var(--tm);border:1px solid var(--br);border-radius:8px;padding:.7rem .9rem;font-family:DM Sans,sans-serif;font-size:.85rem;cursor:pointer">Weg</button>' +
+    '</div>' +
+  '</div>';
+
+  window._genRecipe = r;
+}
+
+function _saveGenRecipe() {
+  if (!window._genRecipe) return;
+  saveDB(window._genRecipe).then(function(saved) {
+    if (!recipes.find(function(r){ return r.id == saved.id; })) recipes.unshift(saved);
+    renderList();
+    closeMod('mgen');
+    document.getElementById('gen-result').innerHTML = '';
+    document.getElementById('gen-input').value = '';
+    window._genRecipe = null;
+    toast('Recept opgeslagen!', 'ok');
+  });
+}
+
+function _genToShopping() {
+  if (!window._genRecipe || !window._genRecipe.ingredients) { toast('Geen ingredienten', 'er'); return; }
+  var name = window._genRecipe.name || 'Gegenereerd recept';
+  var items = window._genRecipe.ingredients.map(function(ing) {
+    return { orig: ing, stripped: stripIng(ing), recipe: name, checked: false, id: Date.now() + Math.random() };
+  });
+  shopping = shopping.concat(items);
+  localStorage.setItem(SK, JSON.stringify(shopping));
+  toast('Ingredienten toegevoegd aan lijst', 'ok');
+}
+
+function _discardGen() {
+  document.getElementById('gen-result').innerHTML = '';
+  document.getElementById('gen-input').value = '';
+  window._genRecipe = null;
+}
 
 // ── INIT ──────────────────────────────
 loadRecipes();
