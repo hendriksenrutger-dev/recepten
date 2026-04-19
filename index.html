@@ -741,17 +741,13 @@ function renderCookStep() {
     dots += '<div class="ckdt ' + cls + '"></div>';
   }
   document.getElementById('ckdots').innerHTML = dots;
-  var ings = cookRecipe.ingredients || [];
-  var words = step.toLowerCase().split(/\s+/);
-  var relevant = ings.filter(function(ing) {
-    var ingWords = ing.toLowerCase().replace(/[0-9,.\-\/]+\s*(gr?|kg|ml|l|eetl?|theel?|el|tl|st|blik|zakje|bosje|teen|scheut)\s*/gi, '').trim().split(/\s+/);
-    return ingWords.some(function(w) { return w.length > 3 && words.some(function(sw){ return sw.includes(w) || w.includes(sw); }); });
-  }).slice(0, 4);
   stopTimer();
-  var content = '<div class="cks"><div class="ckbg">' + (idx+1) + '</div><p class="cksl">Stap ' + (idx+1) + '</p><p class="ckst">' + step + '</p></div>' +
+  var allIngs = (cookRecipe.ingredients || []).map(function(i){ return '<div class="ckii">' + i + '</div>'; }).join('');
+  var ingSection = allIngs ? '<div class="ckig"><p class="ckigt">Ingredienten</p>' + allIngs + '</div>' : '';
+  var content2 = '<div class="cks"><div class="ckbg">' + (idx+1) + '</div><p class="cksl">Stap ' + (idx+1) + '</p><p class="ckst">' + step + '</p></div>' +
     '<div class="cktb"><div><div class="cktl">Timer</div><div class="cktd" id="cktime">00:00</div></div><button class="ckts" onclick="startTimer()">Start timer</button></div>' +
-    '';
-  document.getElementById('ckcontent').innerHTML = content;
+    ingSection;
+  document.getElementById('ckcontent').innerHTML = content2;
   var nav = '';
   if (idx > 0) nav += '<button class="ckpv" onclick="cookNav(-1)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16"><path d="M15 18l-6-6 6-6"/></svg>Vorige</button>';
   if (idx < total - 1) nav += '<button class="cknx" onclick="cookNav(1)">Volgende<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16"><path d="M9 18l6-6-6-6"/></svg></button>';
