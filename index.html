@@ -275,6 +275,9 @@ textarea{resize:vertical;min-height:88px}
       <button class="hb" onclick="showShopping()" title="Boodschappenlijst">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 2 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"/><line x1="3" y1="6" x2="21" y2="6"/><path d="M16 10a4 4 0 0 1-8 0"/></svg>
       </button>
+      <button class="hb" onclick="openMod('mmenu')" title="Weekmenu">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="2" width="9" height="9" rx="1.5"/><rect x="13" y="2" width="9" height="9" rx="1.5"/><rect x="2" y="13" width="9" height="9" rx="1.5"/><rect x="13" y="13" width="9" height="9" rx="1.5"/><circle cx="6.5" cy="6.5" r="1" fill="currentColor"/><circle cx="17.5" cy="6.5" r="1" fill="currentColor"/><circle cx="6.5" cy="17.5" r="1" fill="currentColor"/><circle cx="17.5" cy="17.5" r="1" fill="currentColor"/><circle cx="11" cy="11" r="1" fill="currentColor"/></svg>
+      </button>
       <button class="hb" onclick="openSettings()" title="Instellingen">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
       </button>
@@ -291,6 +294,7 @@ textarea{resize:vertical;min-height:88px}
     <button class="fb" onclick="setFilter('vlees',this)">&#129385; Vlees</button>
     <button class="fb" onclick="setFilter('vis',this)">&#128032; Vis</button>
     <button class="fb" onclick="setFilter('vegetarisch',this)">&#129382; Veg</button>
+    <button class="fb" onclick="setFilter('kip',this)">&#127831; Kip</button>
     <button class="fb" onclick="setFilter('bbq',this)">&#128293; BBQ</button>
     <button class="fb" onclick="setFilter('soep',this)">&#129490; Soep</button>
     <button class="fb" onclick="setFilter('pasta',this)">&#127837; Pasta</button>
@@ -407,7 +411,7 @@ textarea{resize:vertical;min-height:88px}
         <div class="fg"><label>Categorie</label>
           <input type="text" id="mc2" list="catlist" placeholder="vlees, pasta, brood..."/>
           <datalist id="catlist">
-            <option value="vlees"/><option value="vis"/><option value="vegetarisch"/>
+            <option value="vlees"/><option value="kip"/><option value="vis"/><option value="vegetarisch"/>
             <option value="bbq"/><option value="soep"/><option value="pasta"/>
             <option value="nagerecht"/><option value="brood"/><option value="overig"/>
           </datalist>
@@ -423,6 +427,20 @@ textarea{resize:vertical;min-height:88px}
       <div class="fg"><label>Bereiding (een stap per regel)</label><textarea id="mst" placeholder="Kook de pasta al dente.&#10;Bak de pancetta knapperig." style="min-height:110px"></textarea></div>
     </div>
     <div class="mf"><button class="bs2" onclick="closeMod('mm')">Annuleren</button><button class="bp2" onclick="saveManual()">Opslaan</button></div>
+  </div>
+</div>
+
+<!-- MODAL: WEEKMENU -->
+<div class="ov hide" id="mmenu">
+  <div class="mo">
+    <div class="moh"></div>
+    <div class="mhd"><span class="mht">&#127922; Weekmenu</span><button class="mc" onclick="closeMod('mmenu')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6 6 18M6 6l12 12"/></svg></button></div>
+    <div class="mb">
+      <div style="font-size:.85rem;color:var(--tm);margin-bottom:.5rem">Genereert een gevarieerd 5-daags menu uit jouw recepten.</div>
+      <button class="bp2" onclick="generateMenu()" style="width:100%;justify-content:center">&#127922; Genereer menu</button>
+      <div id="menu-result" style="margin-top:.75rem"></div>
+    </div>
+    <div class="mf"><button class="bs2" onclick="closeMod('mmenu')">Sluiten</button></div>
   </div>
 </div>
 
@@ -549,7 +567,7 @@ function show(id){ document.getElementById(id).classList.remove('hide'); }
 function hide(id){ document.getElementById(id).classList.add('hide'); }
 
 // ── LIST ──────────────────────────────
-var CE = { vlees:'&#129385;', vis:'&#128032;', vegetarisch:'&#129382;', bbq:'&#128293;', soep:'&#129490;', pasta:'&#127837;', nagerecht:'&#127854;', brood:'&#127838;', overig:'&#127860;' };
+var CE = { vlees:'&#129385;', kip:'&#127831;', vis:'&#128032;', vegetarisch:'&#129382;', bbq:'&#128293;', soep:'&#129490;', pasta:'&#127837;', nagerecht:'&#127854;', brood:'&#127838;', overig:'&#127860;' };
 
 function renderList() {
   var q = (document.getElementById('srch').value || '').toLowerCase();
@@ -1193,6 +1211,94 @@ function toast(msg, type) {
   el.textContent = msg;
   c.appendChild(el);
   setTimeout(function(){ if (el.parentNode) el.parentNode.removeChild(el); }, 3000);
+}
+
+// ── WEEKMENU GENERATOR ───────────────
+function openMenuRecipe(id) { closeMod("mmenu"); showDetail(id); }
+function generateMenu() {
+  var box = document.getElementById('menu-result');
+  box.innerHTML = '';
+  
+  var skip = ['bbq','nagerecht','brood'];
+  var pool = recipes.filter(function(r){ return skip.indexOf(r.category) === -1; });
+  
+  if (pool.length < 3) { box.innerHTML = '<p style="color:var(--tm);font-size:.85rem">Voeg meer recepten toe om een menu te genereren.</p>'; return; }
+
+  // Categorize recipes
+  function hasIngredient(r, words) {
+    var ings = (r.ingredients||[]).join(' ').toLowerCase();
+    return words.some(function(w){ return ings.includes(w); });
+  }
+  
+  var buckets = { pasta:[], rijst:[], vis:[], kip:[], vlees:[], vegetarisch:[], overig:[] };
+  pool.forEach(function(r) {
+    var cat = r.category || 'overig';
+    if (cat === 'vis') buckets.vis.push(r);
+    else if (cat === 'kip') buckets.kip.push(r);
+    else if (cat === 'pasta') buckets.pasta.push(r);
+    else if (cat === 'vegetarisch') buckets.vegetarisch.push(r);
+    else if (hasIngredient(r, ['rijst','nasi','pilaf','paella'])) buckets.rijst.push(r);
+    else if (hasIngredient(r, ['pasta','spaghetti','rigatoni','penne','lasagne','tagliatelle','fettuccine'])) buckets.pasta.push(r);
+    else if (cat === 'vlees' || cat === 'soep' || cat === 'overig') buckets.overig.push(r);
+    else buckets.overig.push(r);
+  });
+
+  function shuffle(arr) { return arr.slice().sort(function(){ return Math.random()-.5; }); }
+  function pick(arr, n) { return shuffle(arr).slice(0,n); }
+
+  // Build 5 day menu - max 2 per category, include 1-2 AVG days
+  var days = [];
+  var catCounts = {};
+  var avgCount = Math.random() > 0.5 ? 2 : 1;
+  
+  // Add AVG days
+  for (var i = 0; i < avgCount; i++) days.push({ type:'avg', recipe: null });
+  
+  // Fill remaining days from recipes
+  var remaining = 5 - avgCount;
+  var candidates = [];
+  Object.keys(buckets).forEach(function(cat) {
+    var shuffled = shuffle(buckets[cat]);
+    var max = Math.min(2, shuffled.length);
+    shuffled.slice(0,max).forEach(function(r){ candidates.push({ type:cat, recipe:r }); });
+  });
+  candidates = shuffle(candidates);
+  
+  // Pick unique recipes
+  var used = {};
+  candidates.forEach(function(c) {
+    if (days.length >= 5) return;
+    if (used[c.recipe && c.recipe.id]) return;
+    catCounts[c.type] = (catCounts[c.type]||0) + 1;
+    if (catCounts[c.type] > 2) return;
+    days.push(c);
+    if (c.recipe) used[c.recipe.id] = true;
+  });
+  
+  // Shuffle final order
+  days = shuffle(days).slice(0,5);
+  
+  var dayNames = ['Maandag','Dinsdag','Woensdag','Donderdag','Vrijdag'];
+  var catColors = { pasta:'#E8642A', rijst:'#8B6914', vis:'#2E6DA4', kip:'#D47A1A', vlees:'#8B2020', vegetarisch:'#2E7D32', avg:'#666', overig:'#555' };
+  
+  var html = '<div style="display:flex;flex-direction:column;gap:.5rem">';
+  days.forEach(function(d, i) {
+    var color = catColors[d.type] || '#555';
+    var name = d.recipe ? d.recipe.name : 'AVG — eigen keuze';
+    var sub = d.recipe ? (d.recipe.time ? d.recipe.time + ' min' : '') : 'Aardappelen, vlees, groente';
+    var em = d.recipe ? (d.recipe.emoji || CE[d.recipe.category] || '&#127860;') : '&#127859;';
+    html += '<div style="background:var(--wh);border:1px solid var(--br);border-radius:10px;padding:.65rem .85rem;display:flex;align-items:center;gap:.75rem">' +
+      '<div style="font-size:1.4rem">' + em + '</div>' +
+      '<div style="flex:1">' +
+        '<div style="font-size:.72rem;font-weight:600;text-transform:uppercase;letter-spacing:.05em;color:' + color + '">' + dayNames[i] + '</div>' +
+        '<div style="font-size:.9rem;font-weight:600;color:var(--tx)">' + name + '</div>' +
+        (sub ? '<div style="font-size:.75rem;color:var(--tm)">' + sub + '</div>' : '') +
+      '</div>' +
+      (d.recipe ? '<button onclick="openMenuRecipe(\'' + d.recipe.id + '\')" style="background:var(--bp);border:1px solid var(--br);border-radius:6px;padding:.3rem .6rem;font-size:.75rem;color:var(--bd);cursor:pointer">Open</button>' : '') +
+    '</div>';
+  });
+  html += '</div>';
+  box.innerHTML = html;
 }
 
 // ── INIT ──────────────────────────────
