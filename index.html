@@ -1159,6 +1159,45 @@ function toast(msg, type) {
 // ── INIT ──────────────────────────────
 loadRecipes();
 
+document.getElementById('pf-doc').addEventListener('change', function() {
+  if (!this.files || !this.files[0]) return;
+  var key = getAK();
+  if (!key) { toast('Sla eerst een API key op', 'er'); openSettings(); return; }
+  var file = this.files[0];
+  var inp = this;
+  toast('PDF verwerken...', '');
+  var reader = new FileReader();
+  reader.onload = function(e) {
+    var b64 = e.target.result.split(',')[1];
+    fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'x-api-key': key, 'anthropic-version': '2023-06-01', 'anthropic-dangerous-direct-browser-access': 'true' },
+      body: JSON.stringify({
+        model: 'claude-sonnet-4-6', max_tokens: 2000,
+        messages: [{ role: 'user', content: [
+          { type: 'document', source: { type: 'base64', media_type: 'application/pdf', data: b64 } },
+          { type: 'text', text: 'Dit PDF bevat een recept. Geef ALLEEN dit JSON object terug: {"name":"...","category":"vlees|vis|vegetarisch|bbq|soep|pasta|nagerecht|brood|overig","emoji":"...","servings":4,"time":45,"difficulty":"Makkelijk|Gemiddeld|Moeilijk","ingredients":["..."],"steps":["..."]}' }
+        ]}]
+      })
+    }).then(function(r){ return r.json(); }).then(function(data) {
+      if (data.error) throw new Error(data.error.message);
+      var txt = (data.content||[]).map(function(b){ return b.text||''; }).join('');
+      var m = txt.match(/\{[\s\S]*\}/);
+      if (!m) throw new Error('Geen recept gevonden in PDF');
+      var parsed = JSON.parse(m[0]);
+      parsed.source = 'PDF';
+      saveDB(parsed).then(function(saved) {
+        if (!recipes.find(function(r){ return r.id==saved.id; })) recipes.unshift(saved);
+        renderList();
+        toast('"'+parsed.name+'" ingelezen!', 'ok');
+      });
+    }).catch(function(e){ toast('Fout: '+e.message, 'er'); })
+    .finally(function(){ inp.value=''; });
+  };
+  reader.onerror = function(){ toast('Leesfout PDF', 'er'); inp.value=''; };
+  reader.readAsDataURL(file);
+});
+
 // Unregister old service workers
 if ('serviceWorker' in navigator) {
   navigator.serviceWorker.getRegistrations().then(function(regs) {
