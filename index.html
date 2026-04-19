@@ -504,7 +504,7 @@ function showShopping() {
 }
 
 // -- LIST (GRID) -----------------------------------
-const CAT_EMOJI = {vlees:'🥩',vis:'🐟',vegetarisch:'🥦',bbq:'🔥',soep:'🍲',pasta:'🍝',nagerecht:'🍮',overig:'🍴'};
+const CAT_EMOJI = {vlees:'vlees',vis:'vis',vegetarisch:'veg',bbq:'bbq',soep:'soep',pasta:'pasta',nagerecht:'nag',overig:''};
 
 function renderList() {
   const q = (document.getElementById('search-input').value || '').toLowerCase();
@@ -529,10 +529,10 @@ function renderList() {
   grid.className = 'recipe-list-view';
   grid.innerHTML = sorted.map((r,i) => `
     <div class="rcard-list" style="animation-delay:${i*0.03}s">
-      <span class="rcard-list-emoji" onclick="showDetail('${r.id}')">${r.emoji || CAT_EMOJI[r.category] || '🍴'}</span>
+      <span class="rcard-list-emoji" onclick="showDetail('${r.id}')">${r.emoji || CAT_EMOJI[r.category] || '&#127860;'}</span>
       <div class="rcard-list-info" onclick="showDetail('${r.id}')">
         <div class="rcard-list-title">${r.name}</div>
-        <div class="rcard-list-meta">${r.category||'overig'}${r.time ? ' · ' + r.time + ' min' : ''}${r.servings ? ' · ' + r.servings + ' pers.' : ''}</div>
+        <div class="rcard-list-meta">${r.category||'overig'}${r.time ? ' - ' + r.time + ' min' : ''}${r.servings ? ' - ' + r.servings + ' pers.' : ''}</div>
       </div>
       <span class="rcard-list-arrow" onclick="showDetail('${r.id}')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="9 18 15 12 9 6"/></svg></span>
 
@@ -553,7 +553,7 @@ function renderDetail(r) {
   const factor = currentServings / (baseServings || 4);
   const ings = (r.ingredients || []).map(i => scaleIng(i, factor));
   document.getElementById('detail-body').innerHTML = `
-    <div class="detail-emoji">${r.emoji || CAT_EMOJI[r.category] || '🍴'}</div>
+    <div class="detail-emoji">${r.emoji || CAT_EMOJI[r.category] || '&#127860;'}</div>
     <div class="detail-tags">
       <span class="tag">${r.category||'overig'}</span>
       ${r.difficulty ? `<span class="tag" style="background:rgba(232,100,42,0.1);color:var(--orange)">${r.difficulty}</span>` : ''}
@@ -563,14 +563,14 @@ function renderDetail(r) {
       <button class="edit-link" onclick="editTitle('${r.id}')" style="font-size:0.85rem">bewerken</button>
     </div>
     <div class="detail-stats">
-      ${r.time ? `<div class="dstat"><div class="dstat-label">⏱ Tijd</div><div class="dstat-val">${r.time} min</div></div>` : '<div class="dstat"><div class="dstat-label">⏱ Tijd</div><div class="dstat-val">—</div></div>'}
-      <div class="dstat"><div class="dstat-label">👥 Personen</div><div class="dstat-val">${r.servings||4}</div></div>
-      ${r.difficulty ? `<div class="dstat"><div class="dstat-label">📊 Niveau</div><div class="dstat-val">${r.difficulty}</div></div>` : ''}
+      ${r.time ? `<div class="dstat"><div class="dstat-label">&#9201; Tijd</div><div class="dstat-val">${r.time} min</div></div>` : '<div class="dstat"><div class="dstat-label">&#9201; Tijd</div><div class="dstat-val">\u2014</div></div>'}
+      <div class="dstat"><div class="dstat-label">&#128101; Personen</div><div class="dstat-val">${r.servings||4}</div></div>
+      ${r.difficulty ? `<div class="dstat"><div class="dstat-label">&#128202; Niveau</div><div class="dstat-val">${r.difficulty}</div></div>` : ''}
     </div>
     <div class="serving-adj">
       <span class="serving-adj-label">Aanpassen voor</span>
       <div class="serving-ctrl">
-        <button class="serving-btn" onclick="adjServings(-1)">−</button>
+        <button class="serving-btn" onclick="adjServings(-1)">\u2212</button>
         <span class="serving-num" id="serving-num">${currentServings}</span>
         <button class="serving-btn" onclick="adjServings(1)">+</button>
       </div>
@@ -586,10 +586,10 @@ function renderDetail(r) {
     </div>
     <button class="add-shopping-btn" onclick="addToShopping('${r.id}')">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 2 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"/><line x1="3" y1="6" x2="21" y2="6"/><path d="M16 10a4 4 0 0 1-8 0"/></svg>
-      Voeg ingrediënten toe aan boodschappenlijst
+      Voeg ingredi\u00ebnten toe aan boodschappenlijst
     </button>
     <div class="section-title">
-      Ingrediënten
+      Ingredi\u00ebnten
       <div class="section-actions"><button class="edit-link" onclick="editField('${r.id}','ingredients')">Bewerken</button></div>
     </div>
     <ul class="ing-list" id="ing-${r.id}">${ings.map((ing,idx) => `
@@ -659,7 +659,7 @@ async function saveTitle(id) {
   await patchRecipe(id, { name: val });
   document.getElementById('detail-header-title').textContent = val;
   showDetail(id);
-  toast('Naam opgeslagen ✓', 'success');
+  toast('Naam opgeslagen &#10003;', 'success');
 }
 
 // -- EDIT FIELDS -----------------------------------
@@ -699,15 +699,15 @@ async function saveField(id, field) {
   const lines = ta.value.split('\n').map(s => s.trim()).filter(Boolean);
   await patchRecipe(id, { [field]: lines });
   showDetail(id);
-  toast('Opgeslagen ✓', 'success');
+  toast('Opgeslagen &#10003;', 'success');
 }
 
 // -- NUTRITION via Claude AI -----------------------
 async function calcNutrition(id) {
   const r = recipes.find(x => x.id == id);
-  if (!r?.ingredients?.length) { toast('Geen ingrediënten', 'error'); return; }
+  if (!r?.ingredients?.length) { toast('Geen ingredi\u00ebnten', 'error'); return; }
   const key = getAntKey();
-  if (!key) { toast('Sla eerst een API key op ⚙️', 'error'); openSettings(); return; }
+  if (!key) { toast('Sla eerst een API key op \u2699\ufe0f', 'error'); openSettings(); return; }
   const box = document.getElementById('nutr-' + id);
   box.innerHTML = '<div style="grid-column:1/-1;text-align:center;padding:0.4rem"><div class="spinner" style="margin:0 auto"></div></div>';
   try {
@@ -717,11 +717,11 @@ async function calcNutrition(id) {
       body: JSON.stringify({
         model: 'claude-sonnet-4-6', max_tokens: 300,
         messages: [{ role: 'user', content: `Bereken de voedingswaarden per 100g van dit bereide gerecht: "${r.name}".
-Ingrediënten: ${r.ingredients.slice(0,10).join(', ')}.
+Ingredi\u00ebnten: ${r.ingredients.slice(0,10).join(', ')}.
 
 Denk stap voor stap:
-1. Schat het gewicht van elk hoofdingrediënt
-2. Bepaal de voedingswaarden per ingrediënt op basis van standaard voedingstabellen
+1. Schat het gewicht van elk hoofdingredi\u00ebnt
+2. Bepaal de voedingswaarden per ingredi\u00ebnt op basis van standaard voedingstabellen
 3. Tel alles op en deel door het totale gewicht van het gerecht
 4. Geef het resultaat per 100g
 
@@ -742,7 +742,7 @@ Antwoord UITSLUITEND met dit JSON object, geen uitleg, geen tekst:
     nutr.fat = Math.round(+nutr.fat*10)/10;
     await patchRecipe(id, { nutrition: nutr });
     box.innerHTML = `<div class="nval"><div class="nval-num">${nutr.kcal}</div><div class="nval-label">kcal</div></div><div class="nval"><div class="nval-num">${nutr.protein}g</div><div class="nval-label">eiwit</div></div><div class="nval"><div class="nval-num">${nutr.carbs}g</div><div class="nval-label">koolh.</div></div><div class="nval"><div class="nval-num">${nutr.fat}g</div><div class="nval-label">vet</div></div>`;
-    toast('Voedingswaarden berekend ✓', 'success');
+    toast('Voedingswaarden berekend &#10003;', 'success');
   } catch(e) {
     box.innerHTML = '<div style="grid-column:1/-1;font-size:0.78rem;color:var(--text-light);text-align:center">Probeer opnieuw</div>';
     toast('Fout: ' + e.message, 'error');
@@ -756,7 +756,7 @@ function addToShopping(id) {
   const newItems = r.ingredients.map(ing => ({ ing, recipe: r.name, checked: false, id: Date.now() + Math.random() }));
   shoppingList = [...shoppingList, ...newItems];
   localStorage.setItem(SHOP_STORE, JSON.stringify(shoppingList));
-  toast(`${r.ingredients.length} ingrediënten toegevoegd 🛒`, 'success');
+  toast(`${r.ingredients.length} ingredi\u00ebnten toegevoegd &#128722;`, 'success');
   // Update badge
   updateShoppingBadge();
 }
@@ -772,7 +772,7 @@ function updateShoppingBadge() {
 function renderShopping() {
   const list = document.getElementById('shopping-list');
   if (!shoppingList.length) {
-    list.innerHTML = '<div class="shop-empty"><div class="shop-empty-icon">🛒</div><p>Nog geen boodschappen.<br>Voeg ingrediënten toe vanuit een recept.</p></div>';
+    list.innerHTML = '<div class="shop-empty"><div class="shop-empty-icon">&#128722;</div><p>Nog geen boodschappen.<br>Voeg ingredi\u00ebnten toe vanuit een recept.</p></div>';
     return;
   }
   // Group by recipe
@@ -810,10 +810,10 @@ async function importUrl() {
   const url = document.getElementById('url-input').value.trim();
   if (!url) { toast('Vul een URL in', 'error'); return; }
   const key = getAntKey();
-  if (!key) { toast('Sla eerst een API key op ⚙️', 'error'); closeModal('modal-url'); openSettings(); return; }
+  if (!key) { toast('Sla eerst een API key op \u2699\ufe0f', 'error'); closeModal('modal-url'); openSettings(); return; }
   const st = document.getElementById('url-status');
   st.classList.remove('hidden');
-  document.getElementById('url-status-text').textContent = 'Recept ophalen…';
+  document.getElementById('url-status-text').textContent = 'Recept ophalen\u2026';
   try {
     const resp = await fetch('https://api.anthropic.com/v1/messages', {
       method: 'POST',
@@ -836,7 +836,7 @@ async function importUrl() {
     renderList();
     closeModal('modal-url');
     document.getElementById('url-input').value = '';
-    toast(`"${recipe.name}" toegevoegd! 🎉`, 'success');
+    toast(`"${recipe.name}" toegevoegd! &#127881;`, 'success');
   } catch(e) { toast('Fout: ' + e.message, 'error'); }
   finally { st.classList.add('hidden'); }
 }
@@ -847,8 +847,8 @@ function triggerPhoto() { document.getElementById('photo-file').click(); }
 async function handlePhotoFile(input) {
   if (!input.files?.[0]) return;
   const key = getAntKey();
-  if (!key) { toast('Sla eerst een API key op ⚙️', 'error'); openSettings(); return; }
-  toast('Foto analyseren…', '');
+  if (!key) { toast('Sla eerst een API key op \u2699\ufe0f', 'error'); openSettings(); return; }
+  toast('Foto analyseren\u2026', '');
   try {
     const b64 = await toB64(input.files[0]);
     const mt = input.files[0].type || 'image/jpeg';
@@ -874,7 +874,7 @@ async function handlePhotoFile(input) {
     if (!recipes.find(r => r.id == saved.id)) recipes.unshift(saved);
     closeModal('modal-photo');
     renderList();
-    toast(`"${parsed.name}" gescand! 📸`, 'success');
+    toast(`"${parsed.name}" gescand! &#128248;`, 'success');
   } catch(e) { toast('Fout: ' + e.message, 'error'); }
   finally { input.value = ''; }
 }
@@ -903,35 +903,24 @@ async function saveManual() {
   closeModal('modal-manual');
   ['m-name','m-ingredients','m-steps','m-emoji','m-time'].forEach(id => document.getElementById(id).value='');
   document.getElementById('m-servings').value='4';
-  toast(`"${recipe.name}" opgeslagen! 🎉`, 'success');
+  toast(`"${recipe.name}" opgeslagen! &#127881;`, 'success');
 }
 
 // -- WHATSAPP SHARE -------------------------------
 function shareWhatsApp(id) {
   const r = recipes.find(x => x.id == id);
   if (!r) return;
-  let msg = `🍴 *${r.name}*
-
-`;
-  if (r.time || r.servings) {
-    msg += `${r.time ? '⏱ ' + r.time + ' min  ' : ''}${r.servings ? '👥 ' + r.servings + ' pers.' : ''}
-
-`;
-  }
-  if (r.ingredients?.length) {
-    msg += `*Ingrediënten:*
-${r.ingredients.map(i => '• ' + i).join('
-')}
-
-`;
-  }
-  if (r.steps?.length) {
-    msg += `*Bereiding:*
-${r.steps.map((s,i) => (i+1) + '. ' + s).join('
-')}`;
-  }
-  const url = 'https://wa.me/?text=' + encodeURIComponent(msg);
-  window.open(url, '_blank');
+  const name = r.name || '';
+  const ings = (r.ingredients || []).map((i,n) => '- ' + i).join('\n');
+  const steps = (r.steps || []).map((s,n) => (n+1) + '. ' + s).join('\n');
+  const time = r.time ? r.time + ' min' : '';
+  const serv = r.servings ? r.servings + ' pers.' : '';
+  const meta = [time, serv].filter(Boolean).join(' - ');
+  let msg = '*' + name + '*';
+  if (meta) msg += '\n' + meta;
+  if (ings) msg += '\n\nIngredienten:\n' + ings;
+  if (steps) msg += '\n\nBereiding:\n' + steps;
+  window.open('https://wa.me/?text=' + encodeURIComponent(msg), '_blank');
 }
 
 // -- DELETE ----------------------------------------
@@ -950,7 +939,7 @@ function closeFab() { fabOpen=false; document.getElementById('fab-menu').classLi
 function openModal(id) { document.getElementById(id).classList.remove('hidden'); }
 function closeModal(id) { document.getElementById(id).classList.add('hidden'); }
 function openSettings() { document.getElementById('s-anthropic').value = getAntKey(); openModal('modal-settings'); }
-function saveSettings() { const k=document.getElementById('s-anthropic').value.trim(); if(k) localStorage.setItem(ANT_KEY_STORE,k); else localStorage.removeItem(ANT_KEY_STORE); closeModal('modal-settings'); toast('Opgeslagen ✓','success'); }
+function saveSettings() { const k=document.getElementById('s-anthropic').value.trim(); if(k) localStorage.setItem(ANT_KEY_STORE,k); else localStorage.removeItem(ANT_KEY_STORE); closeModal('modal-settings'); toast('Opgeslagen &#10003;','success'); }
 function getAntKey() { return localStorage.getItem(ANT_KEY_STORE) || ''; }
 document.querySelectorAll('.overlay').forEach(el => el.addEventListener('click', e => { if(e.target===el) el.classList.add('hidden'); }));
 document.addEventListener('keydown', e => { if(e.key==='Escape') { document.querySelectorAll('.overlay').forEach(el=>el.classList.add('hidden')); closeFab(); } });
