@@ -233,36 +233,13 @@ textarea{resize:vertical;min-height:88px}
 
 /* TABLET LAYOUT */
 @media (min-width: 768px) {
-  #app { max-width: 100%; flex-direction: row; flex-wrap: wrap; }
-  
-  /* Sidebar: header + search + filters + list */
-  #mn { flex-direction: row; flex-wrap: wrap; height: 100dvh; }
-  .mh { width: 100%; }
-  .sw { width: 100%; }
-  .fs { width: 100%; }
-  .lh { width: 100%; }
-  .rl { width: 340px; flex-shrink: 0; border-right: 1px solid var(--br); padding-bottom: 5rem; }
-  
-  /* Detail panel: shows next to list */
-  #dt { position: fixed; left: 340px; right: 0; top: 0; bottom: 0; height: 100dvh; border-left: 1px solid var(--br); }
-  #dt .ts { display: none; }
-  
-  /* Shopping panel */
-  #sh { position: fixed; left: 340px; right: 0; top: 0; bottom: 0; height: 100dvh; }
-  
-  /* Cook mode full width */
-  #ck { position: fixed; inset: 0; height: 100dvh; max-width: 100%; }
-  .ckc { max-width: 680px; margin: 0 auto; }
-  
-  /* Splash centered */
+  #app { max-width: 900px; }
+  .rl { padding-bottom: 5rem; }
+  .ckc { max-width: 700px; margin: 0 auto; }
   #sp { max-width: 600px; margin: 0 auto; }
-  
-  /* Modals centered */
   .ov { align-items: center; }
   .mo { border-radius: 16px; max-width: 560px; max-height: 85dvh; }
   .moh { display: none; }
-  
-  /* FAB position */
   .fab { right: 1.5rem; }
 }
 </style>
