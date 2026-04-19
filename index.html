@@ -133,11 +133,14 @@ html,body{height:100%;background:var(--cream);color:var(--text);font-family:'DM 
 .step-num{font-family:'Playfair Display',serif;font-size:1.3rem;font-weight:700;color:var(--orange);line-height:1;flex-shrink:0;min-width:22px}
 .detail-source{font-size:0.78rem;color:var(--text-light);padding-top:0.85rem;border-top:1px solid var(--border)}
 .detail-source a{color:var(--blue-mid)}
-.edit-area{width:100%;background:var(--blue-pale);border:1px solid var(--blue-mid);border-radius:8px;padding:0.65rem;color:var(--text);font-family:'DM Sans',sans-serif;font-size:0.85rem;resize:vertical;outline:none;min-height:80px}
-.edit-input{width:100%;background:var(--blue-pale);border:1px solid var(--blue-mid);border-radius:8px;padding:0.5rem 0.75rem;color:var(--text);font-family:'Playfair Display',serif;font-size:1.4rem;font-weight:700;outline:none;text-align:center}
-.edit-btns{display:flex;gap:0.4rem;margin-top:0.35rem;justify-content:center}
-.edit-save{background:var(--blue-deep);color:var(--white);border:none;padding:0.38rem 0.9rem;border-radius:6px;font-size:0.8rem;cursor:pointer}
-.edit-cancel{background:var(--blue-pale);color:var(--text);border:1px solid var(--border);padding:0.38rem 0.8rem;border-radius:6px;font-size:0.8rem;cursor:pointer}
+.whatsapp-btn{display:flex;align-items:center;justify-content:center;gap:0.5rem;background:#25D366;color:white;border:none;border-radius:8px;padding:0.7rem 1rem;font-family:'DM Sans',sans-serif;font-size:0.9rem;font-weight:600;cursor:pointer;width:100%;margin-top:1rem;transition:background 0.2s}
+.whatsapp-btn:hover{background:#1da851}
+.whatsapp-btn svg{width:20px;height:20px}
+.edit-area{width:100%;background:var(--blue-pale);border:1px solid var(--blue-mid);border-radius:8px;padding:0.85rem;color:var(--text);font-family:'DM Sans',sans-serif;font-size:1rem;line-height:1.7;resize:vertical;outline:none;min-height:200px}
+.edit-input{width:100%;background:var(--blue-pale);border:1px solid var(--blue-mid);border-radius:8px;padding:0.65rem 0.85rem;color:var(--text);font-family:'Playfair Display',serif;font-size:1.5rem;font-weight:700;outline:none;text-align:center}
+.edit-btns{display:flex;gap:0.5rem;margin-top:0.5rem;justify-content:center}
+.edit-save{background:var(--blue-deep);color:var(--white);border:none;padding:0.6rem 1.5rem;border-radius:8px;font-size:0.95rem;font-weight:600;cursor:pointer}
+.edit-cancel{background:var(--blue-pale);color:var(--text);border:1px solid var(--border);padding:0.6rem 1.25rem;border-radius:8px;font-size:0.95rem;cursor:pointer}
 
 /* LIST VIEW */
 .recipe-list-view{flex:1;overflow-y:auto;padding:0.5rem 0.75rem 5rem;display:flex;flex-direction:column;gap:0.4rem}
@@ -600,6 +603,10 @@ function renderDetail(r) {
     </div>
     <ol class="step-list" id="step-${r.id}">${(r.steps||[]).map((s,i) => `<li class="step-item"><span class="step-num">${i+1}</span><span>${s}</span></li>`).join('')}</ol>
     ${r.source_url ? `<div class="detail-source">Bron: <a href="${r.source_url}" target="_blank" rel="noopener">${safeHost(r.source_url)}</a></div>` : ''}
+    <button class="whatsapp-btn" onclick="shareWhatsApp('${r.id}')">
+      <svg viewBox="0 0 24 24" fill="currentColor"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347z"/><path d="M12 0C5.373 0 0 5.373 0 12c0 2.136.564 4.14 1.542 5.877L.057 23.893l6.197-1.458A11.955 11.955 0 0 0 12 24c6.627 0 12-5.373 12-12S18.627 0 12 0zm0 21.818a9.818 9.818 0 0 1-5.032-1.388l-.36-.214-3.733.879.936-3.618-.236-.373A9.818 9.818 0 1 1 12 21.818z"/></svg>
+      Deel via WhatsApp
+    </button>
   `;
 }
 
@@ -865,6 +872,7 @@ async function handlePhotoFile(input) {
     parsed.source = 'Handgeschreven';
     const saved = await saveRecipeToDB(parsed);
     if (!recipes.find(r => r.id == saved.id)) recipes.unshift(saved);
+    closeModal('modal-photo');
     renderList();
     toast(`"${parsed.name}" gescand! 📸`, 'success');
   } catch(e) { toast('Fout: ' + e.message, 'error'); }
@@ -896,6 +904,34 @@ async function saveManual() {
   ['m-name','m-ingredients','m-steps','m-emoji','m-time'].forEach(id => document.getElementById(id).value='');
   document.getElementById('m-servings').value='4';
   toast(`"${recipe.name}" opgeslagen! 🎉`, 'success');
+}
+
+// ── WHATSAPP SHARE ───────────────────────────────
+function shareWhatsApp(id) {
+  const r = recipes.find(x => x.id == id);
+  if (!r) return;
+  let msg = `🍴 *${r.name}*
+
+`;
+  if (r.time || r.servings) {
+    msg += `${r.time ? '⏱ ' + r.time + ' min  ' : ''}${r.servings ? '👥 ' + r.servings + ' pers.' : ''}
+
+`;
+  }
+  if (r.ingredients?.length) {
+    msg += `*Ingrediënten:*
+${r.ingredients.map(i => '• ' + i).join('
+')}
+
+`;
+  }
+  if (r.steps?.length) {
+    msg += `*Bereiding:*
+${r.steps.map((s,i) => (i+1) + '. ' + s).join('
+')}`;
+  }
+  const url = 'https://wa.me/?text=' + encodeURIComponent(msg);
+  window.open(url, '_blank');
 }
 
 // ── DELETE ────────────────────────────────────────
