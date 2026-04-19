@@ -25,13 +25,13 @@ html,body{height:100%;background:var(--cr);color:var(--tx);font-family:'DM Sans'
 #app{max-width:480px;margin:0 auto;height:100dvh;display:flex;flex-direction:column;overflow:hidden}
 .scr{flex:1;overflow-y:auto;-webkit-overflow-scrolling:touch}
 .sb{position:relative}
-.sb input{width:100%;background:#EEF6FD;border:1px solid #D0DFF0;border-radius:8px;padding:.6rem 1rem .6rem 2.75rem;color:#1A3A5C;font-family:'DM Sans',sans-serif;font-size:.88rem;outline:none;-webkit-text-fill-color:#1A3A5C}
+.sb input{width:100%;background:#EEF6FD;border:1px solid #D0DFF0;border-radius:8px;padding:.65rem 1rem .65rem 2.5rem;color:#1A3A5C;font-family:'DM Sans',sans-serif;font-size:.88rem;outline:none;box-sizing:border-box}
 .sb input::placeholder{color:#4A6A8A!important;opacity:1!important;-webkit-text-fill-color:#4A6A8A}
 .sb input:focus{border-color:#2E6DA4}
-.gen-btn{margin:.4rem 0 0;background:#EEF6FD;border:1px solid #D0DFF0;border-radius:8px;padding:.6rem 1rem;cursor:pointer;display:flex;align-items:center;gap:.65rem;width:100%;transition:border-color .2s}
+.gen-btn{margin:0;background:#EEF6FD;border:1px solid #D0DFF0;border-radius:8px;padding:.65rem 1rem;cursor:pointer;display:flex;align-items:center;gap:.65rem;width:100%;transition:border-color .2s;box-sizing:border-box}
 .gen-btn:hover{border-color:#2E6DA4}
-.si{position:absolute;left:.85rem;top:50%;transform:translateY(-50%)}
-.si svg{width:16px;height:16px}
+.si{position:absolute;left:.75rem;top:50%;transform:translateY(-50%);display:flex;align-items:center}
+.si svg{width:16px;height:16px;display:block}
 .hide{display:none!important}
 ::-webkit-scrollbar{width:4px}::-webkit-scrollbar-track{background:transparent}::-webkit-scrollbar-thumb{background:var(--br);border-radius:2px}
 .ts{height:5px;background:repeating-linear-gradient(90deg,var(--bd) 0,var(--bd) 16px,var(--or) 16px,var(--or) 32px,var(--bm) 32px,var(--bm) 48px,var(--c2) 48px,var(--c2) 64px);flex-shrink:0}
@@ -62,7 +62,7 @@ html,body{height:100%;background:var(--cr);color:var(--tx);font-family:'DM Sans'
 .hbs{display:flex;gap:.4rem}
 .hb{background:rgba(255,255,255,.1);border:none;color:var(--wh);width:36px;height:36px;border-radius:8px;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:background .2s}
 .hb:hover{background:rgba(255,255,255,.2)}.hb svg{width:18px;height:18px}
-.sw{padding:.75rem 1rem .5rem;background:var(--wh);border-bottom:1px solid var(--br);flex-shrink:0}
+.sw{padding:.6rem .75rem .6rem;background:var(--wh);border-bottom:1px solid var(--br);flex-shrink:0;display:flex;flex-direction:column;gap:.4rem}
 
 
 
