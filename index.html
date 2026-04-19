@@ -59,8 +59,8 @@ html,body{height:100%;background:var(--cr);color:var(--tx);font-family:'DM Sans'
 .sb input::placeholder{color:var(--tm)}
 .gen-btn{margin:.4rem 0 0;background:var(--bp);border:1px solid var(--br);border-radius:8px;padding:.6rem 1rem;cursor:pointer;display:flex;align-items:center;gap:.65rem;width:100%;transition:border-color .2s}
 .gen-btn:hover{border-color:var(--bm)}
-.sb input:focus{border-color:var(--bm)}.sb input::placeholder{color:var(--tl)}
-.si{position:absolute;left:.85rem;top:50%;transform:translateY(-50%)}.si svg{width:16px;height:16px}
+.sb input:focus{border-color:var(--bm)}
+.si{position:absolute;left:.85rem;top:50%;transform:translateY(-50%);color:var(--tm)}.si svg{width:16px;height:16px;stroke:var(--tm)}
 .fs{display:flex;gap:.4rem;overflow-x:auto;padding:.5rem 1rem;background:var(--wh);border-bottom:1px solid var(--br);flex-shrink:0;scrollbar-width:none}
 .fs::-webkit-scrollbar{display:none}
 .fb{background:var(--bp);border:1px solid var(--br);color:var(--tm);font-family:'DM Sans',sans-serif;font-size:.75rem;font-weight:500;padding:.28rem .8rem;border-radius:99px;cursor:pointer;white-space:nowrap;transition:all .2s}
@@ -290,12 +290,12 @@ textarea{resize:vertical;min-height:88px}
   </div>
   <div class="sw">
     <div class="sb">
-      <span class="si"><svg viewBox="0 0 24 24" fill="none" stroke="var(--tm)" stroke-width="2.5"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg></span>
+      <span class="si"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg></span>
       <input type="text" id="srch" placeholder="Zoek een recept..." oninput="renderList()"/>
     </div>
     <button class="gen-btn" onclick="openMod('mgen')">
       <span style="font-size:1rem;margin-left:.1rem;width:16px;display:flex;align-items:center;justify-content:center">&#10024;</span>
-      <span style="flex:1;text-align:left;font-size:.88rem;color:var(--tm)">Bedenk een recept...</span>
+      <span style="flex:1;text-align:left;font-size:.88rem;color:var(--tm);font-family:'DM Sans',sans-serif">Bedenk een recept...</span>
       <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--tl)" stroke-width="2"><polyline points="9 18 15 12 9 6"/></svg>
     </button>
   </div>
