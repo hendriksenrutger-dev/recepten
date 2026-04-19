@@ -687,21 +687,26 @@ function calcNutr(id) {
   if (!key) { toast('Sla eerst een API key op', 'er'); openSettings(); return; }
   var box = document.getElementById('ng' + id);
   box.innerHTML = '<div style="grid-column:1/-1;text-align:center;padding:.4rem"><div class="sp2" style="margin:0 auto"></div></div>';
+  var prompt = 'Gerecht: ' + r.name + '. Ingredienten: ' + r.ingredients.slice(0,10).join(', ') + '. Geef de geschatte voedingswaarden per 100g van dit bereide gerecht als JSON. Antwoord met ALLEEN dit object, geen tekst ervoor of erna: {"kcal":0,"protein":0,"carbs":0,"fat":0}';
   fetch('https://api.anthropic.com/v1/messages', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json', 'x-api-key': key, 'anthropic-version': '2023-06-01', 'anthropic-dangerous-direct-browser-access': 'true' },
     body: JSON.stringify({
-      model: 'claude-sonnet-4-6', max_tokens: 400,
-      messages: [{ role: 'user', content: 'Bereken de voedingswaarden per 100g van het bereide gerecht "' + r.name + '".\nIngredienten: ' + r.ingredients.slice(0,10).join(', ') + '.\n\nDenk stap voor stap:\n1. Schat het gewicht per ingrediент\n2. Bepaal voedingswaarden per ingrediент\n3. Tel op en deel door totaalgewicht\n4. Geef resultaat per 100g\n\nGeef UITSLUITEND dit JSON object terug:\n{"kcal":250,"protein":15.2,"carbs":30.1,"fat":8.5}' }]
+      model: 'claude-sonnet-4-6', max_tokens: 100,
+      system: 'Je bent een voedingsdeskundige. Antwoord ALTIJD met alleen een geldig JSON object, geen uitleg, geen markdown, geen tekst. Formaat: {"kcal":number,"protein":number,"carbs":number,"fat":number}',
+      messages: [{ role: 'user', content: prompt }]
     })
   }).then(function(r2){ return r2.json(); }).then(function(data) {
-    if (!data.content) throw new Error('Geen response');
-    var text = data.content.map(function(b){ return b.text || ''; }).join('');
-    var m = text.match(/\{[^{}]*"kcal"[^{}]*\}/);
-    if (!m) { m = text.match(/\{[\s\S]*\}/); }
-    if (!m) throw new Error('Geen data ontvangen');
-    var nutr = JSON.parse(m[0]);
-    if (!nutr.kcal && nutr.kcal !== 0) throw new Error('Ongeldige data');
+    if (!data.content) throw new Error('Geen response van API');
+    var text = data.content.map(function(b){ return b.text || ''; }).join('').trim();
+    var cleaned = text.replace(/```json|```/g, '').trim();
+    var nutr;
+    try { nutr = JSON.parse(cleaned); } catch(e) {
+      var m = cleaned.match(/\{[\s\S]+\}/);
+      if (!m) throw new Error('Geen geldige JSON ontvangen');
+      nutr = JSON.parse(m[0]);
+    }
+    if (typeof nutr.kcal === 'undefined') throw new Error('Ongeldige data');
     nutr.kcal = Math.round(+nutr.kcal);
     nutr.protein = Math.round(+nutr.protein * 10) / 10;
     nutr.carbs = Math.round(+nutr.carbs * 10) / 10;
