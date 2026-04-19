@@ -299,9 +299,19 @@ textarea{resize:vertical;min-height:88px}
   <div class="rl" id="rlist"></div>
   <div class="fab">
     <div class="fam hide" id="fabm">
-      <div class="fai"><span class="fal">Foto van recept</span>
-        <button class="fas" onclick="triggerPhoto();closeFab()">
+      <div class="fai"><span class="fal">Camera</span>
+        <button class="fas" onclick="triggerCamera();closeFab()">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg>
+        </button>
+      </div>
+      <div class="fai"><span class="fal">Foto uit galerij</span>
+        <button class="fas" onclick="triggerGallery();closeFab()">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
+        </button>
+      </div>
+      <div class="fai"><span class="fal">Bestand (PDF, Word, tekst)</span>
+        <button class="fas" onclick="triggerFile();closeFab()">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
         </button>
       </div>
       <div class="fai"><span class="fal">Importeer via URL</span>
@@ -433,7 +443,9 @@ textarea{resize:vertical;min-height:88px}
 </div>
 
 <div class="tw" id="tw"></div>
-<input type="file" id="pf" accept="image/*" capture="environment" style="display:none" onchange="handlePhoto(this)"/>
+<input type="file" id="pf-cam" accept="image/*" capture="environment" style="display:none" onchange="handlePhoto(this)"/>
+<input type="file" id="pf-gal" accept="image/*" style="display:none" onchange="handlePhoto(this)"/>
+<input type="file" id="pf-doc" accept=".pdf,.doc,.docx,.txt,.rtf,application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document,text/plain" style="display:none" onchange="handleFile(this)"/>
 
 <script>
 var SB_URL = 'https://kegpsbtlfnqxrwiaeovc.supabase.co';
@@ -951,7 +963,10 @@ function importUrl() {
 }
 
 // ── PHOTO SCAN ────────────────────────
-function triggerPhoto() { document.getElementById('pf').click(); }
+function triggerCamera() { document.getElementById('pf-cam').click(); }
+function triggerGallery() { document.getElementById('pf-gal').click(); }
+function triggerFile() { document.getElementById('pf-doc').click(); }
+function triggerPhoto() { triggerGallery(); }
 
 function handlePhoto(input) {
   if (!input.files || !input.files[0]) return;
