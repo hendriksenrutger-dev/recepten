@@ -40,7 +40,7 @@ html,body{height:100%;background:var(--cr);color:var(--tx);font-family:'DM Sans'
 .stag{font-family:'Cormorant Garamond',serif;font-style:italic;font-size:1.25rem;color:var(--bm);margin:1.75rem 0 .4rem;position:relative;z-index:1}
 .sem{font-size:1.5rem;letter-spacing:.12em;margin-bottom:2.5rem;position:relative;z-index:1}
 .ben{position:relative;z-index:1;background:var(--bd);color:var(--wh);border:none;padding:1rem 3rem;border-radius:4px;font-family:'Cormorant Garamond',serif;font-size:1.2rem;letter-spacing:.2em;text-transform:uppercase;cursor:pointer;box-shadow:0 4px 20px rgba(26,58,92,.3);transition:all .2s;display:flex;align-items:center;gap:.75rem}
-.ben:hover{background:var(--or)}.ben::after{content:'???';opacity:.7}
+.ben:hover{background:var(--or)}.ben::after{content:'';opacity:.7}
 .saz{position:absolute;bottom:50px;display:flex;gap:8px;opacity:.2;z-index:0}
 .azt{width:26px;height:26px;border:2px solid var(--bm);border-radius:2px;position:relative}
 .azt::before{content:'';position:absolute;inset:3px;border:1px solid var(--bm);border-radius:1px}
@@ -750,7 +750,7 @@ function renderCookStep() {
   stopTimer();
   var content = '<div class="cks"><div class="ckbg">' + (idx+1) + '</div><p class="cksl">Stap ' + (idx+1) + '</p><p class="ckst">' + step + '</p></div>' +
     '<div class="cktb"><div><div class="cktl">Timer</div><div class="cktd" id="cktime">00:00</div></div><button class="ckts" onclick="startTimer()">Start timer</button></div>' +
-    (relevant.length ? '<div class="ckig"><p class="ckigt">Gebruik je nu</p>' + relevant.map(function(i){ return '<div class="ckii">' + i + '</div>'; }).join('') + '</div>' : '');
+    '';
   document.getElementById('ckcontent').innerHTML = content;
   var nav = '';
   if (idx > 0) nav += '<button class="ckpv" onclick="cookNav(-1)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16"><path d="M15 18l-6-6 6-6"/></svg>Vorige</button>';
