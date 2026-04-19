@@ -532,9 +532,7 @@ function renderList() {
         <div class="rcard-list-meta">${r.category||'overig'}${r.time ? ' · ' + r.time + ' min' : ''}${r.servings ? ' · ' + r.servings + ' pers.' : ''}</div>
       </div>
       <span class="rcard-list-arrow" onclick="showDetail('${r.id}')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="9 18 15 12 9 6"/></svg></span>
-      <button class="rcard-list-del" onclick="confirmDelete('${r.id}')" title="Verwijder">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/><path d="M9 6V4h6v2"/></svg>
-      </button>
+
     </div>`).join('');
 }
 
