@@ -1159,6 +1159,9 @@ function toast(msg, type) {
 // ── INIT ──────────────────────────────
 loadRecipes();
 
+document.getElementById('pf-cam').addEventListener('change', function(){ handlePhoto(this); });
+document.getElementById('pf-gal').addEventListener('change', function(){ handlePhoto(this); });
+
 document.getElementById('pf-doc').addEventListener('change', function() {
   if (!this.files || !this.files[0]) return;
   var key = getAK();
