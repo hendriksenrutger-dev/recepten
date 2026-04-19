@@ -1217,21 +1217,24 @@ function toast(msg, type) {
 
 // ── WEEKMENU GENERATOR ───────────────
 function openMenuRecipe(id) { closeMod("mmenu"); showDetail(id); }
+
+var _menuDays = [];
+
 function generateMenu() {
-  var box = document.getElementById('menu-result');
-  box.innerHTML = '';
-  
+  _menuDays = _buildMenu();
+  _renderMenu();
+}
+
+function _buildMenu() {
   var skip = ['bbq','nagerecht','brood','voorgerecht','bijgerecht'];
   var pool = recipes.filter(function(r){ return skip.indexOf(r.category) === -1; });
-  
-  if (pool.length < 3) { box.innerHTML = '<p style="color:var(--tm);font-size:.85rem">Voeg meer recepten toe om een menu te genereren.</p>'; return; }
+  if (pool.length < 3) return [];
 
-  // Categorize recipes
-  function hasIngredient(r, words) {
+  function hasIng(r, words) {
     var ings = (r.ingredients||[]).join(' ').toLowerCase();
     return words.some(function(w){ return ings.includes(w); });
   }
-  
+
   var buckets = { pasta:[], rijst:[], vis:[], kip:[], vlees:[], vegetarisch:[], overig:[] };
   pool.forEach(function(r) {
     var cat = r.category || 'overig';
@@ -1239,69 +1242,92 @@ function generateMenu() {
     else if (cat === 'kip') buckets.kip.push(r);
     else if (cat === 'pasta') buckets.pasta.push(r);
     else if (cat === 'vegetarisch') buckets.vegetarisch.push(r);
-    else if (hasIngredient(r, ['rijst','nasi','pilaf','paella'])) buckets.rijst.push(r);
-    else if (hasIngredient(r, ['pasta','spaghetti','rigatoni','penne','lasagne','tagliatelle','fettuccine'])) buckets.pasta.push(r);
-    else if (cat === 'vlees' || cat === 'soep' || cat === 'overig') buckets.overig.push(r);
+    else if (hasIng(r, ['rijst','nasi','pilaf','paella'])) buckets.rijst.push(r);
+    else if (hasIng(r, ['pasta','spaghetti','rigatoni','penne','lasagne','tagliatelle','fettuccine'])) buckets.pasta.push(r);
     else buckets.overig.push(r);
   });
 
   function shuffle(arr) { return arr.slice().sort(function(){ return Math.random()-.5; }); }
-  function pick(arr, n) { return shuffle(arr).slice(0,n); }
 
-  // Build 5 day menu - max 2 per category, include 1-2 AVG days
-  var days = [];
-  var catCounts = {};
   var avgCount = Math.random() > 0.5 ? 2 : 1;
-  
-  // Add AVG days
-  for (var i = 0; i < avgCount; i++) days.push({ type:'avg', recipe: null });
-  
-  // Fill remaining days from recipes
-  var remaining = 5 - avgCount;
+  var days = [];
+  for (var i = 0; i < avgCount; i++) days.push({ type:'avg', recipe:null });
+
   var candidates = [];
   Object.keys(buckets).forEach(function(cat) {
-    var shuffled = shuffle(buckets[cat]);
-    var max = Math.min(2, shuffled.length);
-    shuffled.slice(0,max).forEach(function(r){ candidates.push({ type:cat, recipe:r }); });
+    shuffle(buckets[cat]).forEach(function(r){ candidates.push({ type:cat, recipe:r }); });
   });
   candidates = shuffle(candidates);
-  
-  // Pick unique recipes
-  var used = {};
+
+  var used = {}, catCounts = {};
   candidates.forEach(function(c) {
     if (days.length >= 5) return;
-    if (used[c.recipe && c.recipe.id]) return;
+    if (used[c.recipe.id]) return;
     catCounts[c.type] = (catCounts[c.type]||0) + 1;
     if (catCounts[c.type] > 2) return;
     days.push(c);
-    if (c.recipe) used[c.recipe.id] = true;
+    used[c.recipe.id] = true;
   });
-  
-  // Shuffle final order
-  days = shuffle(days).slice(0,5);
-  
+
+  return shuffle(days).slice(0,5);
+}
+
+function _reroolDay(dayIdx) {
+  var usedIds = _menuDays.filter(function(d,i){ return i !== dayIdx && d.recipe; }).map(function(d){ return d.recipe.id; });
+  var current = _menuDays[dayIdx];
+  var skip = ['bbq','nagerecht','brood','voorgerecht','bijgerecht'];
+  var pool = recipes.filter(function(r){
+    return skip.indexOf(r.category) === -1 && usedIds.indexOf(r.id) === -1;
+  });
+  if (!pool.length) { toast('Geen andere recepten beschikbaar', 'er'); return; }
+  var shuffled = pool.slice().sort(function(){ return Math.random()-.5; });
+  _menuDays[dayIdx] = { type: current.type, recipe: shuffled[0] };
+  _renderMenu();
+}
+
+function _addMenuToShopping(dayIdx) {
+  var d = _menuDays[dayIdx];
+  if (!d || !d.recipe) return;
+  var r = recipes.find(function(x){ return x.id == d.recipe.id; });
+  if (!r || !r.ingredients || !r.ingredients.length) { toast('Geen ingredienten', 'er'); return; }
+  var items = r.ingredients.map(function(ing) {
+    return { orig: ing, stripped: stripIng(ing), recipe: r.name, checked: false, id: Date.now() + Math.random() };
+  });
+  shopping = shopping.concat(items);
+  localStorage.setItem(SK, JSON.stringify(shopping));
+  toast(r.name + ' toegevoegd aan lijst', 'ok');
+}
+
+function _renderMenu() {
+  var box = document.getElementById('menu-result');
+  if (!_menuDays.length) { box.innerHTML = '<p style="color:var(--tm);font-size:.85rem">Geen recepten gevonden.</p>'; return; }
   var dayNames = ['Maandag','Dinsdag','Woensdag','Donderdag','Vrijdag'];
   var catColors = { pasta:'#E8642A', rijst:'#8B6914', vis:'#2E6DA4', kip:'#D47A1A', vlees:'#8B2020', vegetarisch:'#2E7D32', avg:'#666', overig:'#555' };
-  
   var html = '<div style="display:flex;flex-direction:column;gap:.5rem">';
-  days.forEach(function(d, i) {
+  _menuDays.forEach(function(d, i) {
     var color = catColors[d.type] || '#555';
     var name = d.recipe ? d.recipe.name : 'AVG — eigen keuze';
     var sub = d.recipe ? (d.recipe.time ? d.recipe.time + ' min' : '') : 'Aardappelen, vlees, groente';
     var em = d.recipe ? (d.recipe.emoji || CE[d.recipe.category] || '&#127860;') : '&#127859;';
-    html += '<div style="background:var(--wh);border:1px solid var(--br);border-radius:10px;padding:.65rem .85rem;display:flex;align-items:center;gap:.75rem">' +
-      '<div style="font-size:1.4rem">' + em + '</div>' +
-      '<div style="flex:1">' +
-        '<div style="font-size:.72rem;font-weight:600;text-transform:uppercase;letter-spacing:.05em;color:' + color + '">' + dayNames[i] + '</div>' +
-        '<div style="font-size:.9rem;font-weight:600;color:var(--tx)">' + name + '</div>' +
-        (sub ? '<div style="font-size:.75rem;color:var(--tm)">' + sub + '</div>' : '') +
+    var btns = d.recipe ?
+      '<button onclick="openMenuRecipe(\'' + d.recipe.id + '\')" style="background:var(--bp);border:1px solid var(--br);border-radius:6px;padding:.3rem .5rem;font-size:.72rem;color:var(--bd);cursor:pointer">Open</button>' +
+      '<button onclick="_reroolDay(' + i + ')" title="Andere keuze" style="background:var(--bp);border:1px solid var(--br);border-radius:6px;padding:.3rem .5rem;font-size:.85rem;cursor:pointer">&#127922;</button>' +
+      '<button onclick="_addMenuToShopping(' + i + ')" title="Boodschappen" style="background:var(--bp);border:1px solid var(--br);border-radius:6px;padding:.3rem .5rem;font-size:.85rem;cursor:pointer">&#128722;</button>'
+      : '';
+    html += '<div style="background:var(--wh);border:1px solid var(--br);border-radius:10px;padding:.65rem .85rem;display:flex;align-items:center;gap:.6rem">' +
+      '<div style="font-size:1.3rem">' + em + '</div>' +
+      '<div style="flex:1;min-width:0">' +
+        '<div style="font-size:.68rem;font-weight:600;text-transform:uppercase;letter-spacing:.05em;color:' + color + '">' + dayNames[i] + '</div>' +
+        '<div style="font-size:.85rem;font-weight:600;color:var(--tx);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">' + name + '</div>' +
+        (sub ? '<div style="font-size:.72rem;color:var(--tm)">' + sub + '</div>' : '') +
       '</div>' +
-      (d.recipe ? '<button onclick="openMenuRecipe(\'' + d.recipe.id + '\')" style="background:var(--bp);border:1px solid var(--br);border-radius:6px;padding:.3rem .6rem;font-size:.75rem;color:var(--bd);cursor:pointer">Open</button>' : '') +
+      '<div style="display:flex;gap:.25rem;flex-shrink:0">' + btns + '</div>' +
     '</div>';
   });
   html += '</div>';
   box.innerHTML = html;
 }
+
 
 // ── INIT ──────────────────────────────
 loadRecipes();
