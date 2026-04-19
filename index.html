@@ -514,12 +514,6 @@ function renderList() {
   });
   document.getElementById('list-count').textContent = filtered.length + ' recept' + (filtered.length !== 1 ? 'en' : '');
 
-  // Update view icons
-  const ig = document.getElementById('icon-grid');
-  const il = document.getElementById('icon-list');
-  if (ig) { ig.style.display = viewMode === 'list' ? '' : 'none'; }
-  if (il) { il.style.display = viewMode === 'grid' ? '' : 'none'; }
-
   if (!filtered.length) {
     grid.innerHTML = '';
     grid.appendChild(empty);
