@@ -709,9 +709,16 @@ async function calcNutrition(id) {
       headers: { 'Content-Type':'application/json','x-api-key':key,'anthropic-version':'2023-06-01','anthropic-dangerous-direct-browser-access':'true' },
       body: JSON.stringify({
         model: 'claude-sonnet-4-6', max_tokens: 300,
-        messages: [{ role: 'user', content: `Bereken de geschatte voedingswaarden per 100g van dit gerecht: "${r.name}".
-Ingrediënten: ${r.ingredients.slice(0,8).join(', ')}.
-Antwoord UITSLUITEND met dit JSON object, niets anders, geen uitleg:
+        messages: [{ role: 'user', content: `Bereken de voedingswaarden per 100g van dit bereide gerecht: "${r.name}".
+Ingrediënten: ${r.ingredients.slice(0,10).join(', ')}.
+
+Denk stap voor stap:
+1. Schat het gewicht van elk hoofdingrediënt
+2. Bepaal de voedingswaarden per ingrediënt op basis van standaard voedingstabellen
+3. Tel alles op en deel door het totale gewicht van het gerecht
+4. Geef het resultaat per 100g
+
+Antwoord UITSLUITEND met dit JSON object, geen uitleg, geen tekst:
 {"kcal":250,"protein":15.2,"carbs":30.1,"fat":8.5}` }]
       })
     });
