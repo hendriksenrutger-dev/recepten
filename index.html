@@ -24,14 +24,14 @@
 html,body{height:100%;background:var(--cr);color:var(--tx);font-family:'DM Sans',sans-serif;overflow:hidden}
 #app{max-width:480px;margin:0 auto;height:100dvh;display:flex;flex-direction:column;overflow:hidden}
 .scr{flex:1;overflow-y:auto;-webkit-overflow-scrolling:touch}
-.sb{position:relative}
-.sb input{width:100%;background:#EEF6FD;border:1px solid #D0DFF0;border-radius:8px;padding:.65rem 1rem .65rem 2.5rem;color:#1A3A5C;font-family:'DM Sans',sans-serif;font-size:.88rem;outline:none;box-sizing:border-box}
-.sb input::placeholder{color:#4A6A8A!important;opacity:1!important;-webkit-text-fill-color:#4A6A8A}
-.sb input:focus{border-color:#2E6DA4}
-.gen-btn{margin:0;background:#EEF6FD;border:1px solid #D0DFF0;border-radius:8px;padding:.65rem 1rem;cursor:pointer;display:flex;align-items:center;gap:.65rem;width:100%;transition:border-color .2s;box-sizing:border-box}
-.gen-btn:hover{border-color:#2E6DA4}
-.si{position:absolute;left:.75rem;top:50%;transform:translateY(-50%);display:flex;align-items:center}
-.si svg{width:16px;height:16px;display:block}
+
+
+
+
+
+
+
+
 .hide{display:none!important}
 ::-webkit-scrollbar{width:4px}::-webkit-scrollbar-track{background:transparent}::-webkit-scrollbar-thumb{background:var(--br);border-radius:2px}
 .ts{height:5px;background:repeating-linear-gradient(90deg,var(--bd) 0,var(--bd) 16px,var(--or) 16px,var(--or) 32px,var(--bm) 32px,var(--bm) 48px,var(--c2) 48px,var(--c2) 64px);flex-shrink:0}
@@ -62,7 +62,7 @@ html,body{height:100%;background:var(--cr);color:var(--tx);font-family:'DM Sans'
 .hbs{display:flex;gap:.4rem}
 .hb{background:rgba(255,255,255,.1);border:none;color:var(--wh);width:36px;height:36px;border-radius:8px;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:background .2s}
 .hb:hover{background:rgba(255,255,255,.2)}.hb svg{width:18px;height:18px}
-.sw{padding:.6rem .75rem .6rem;background:var(--wh);border-bottom:1px solid var(--br);flex-shrink:0;display:flex;flex-direction:column;gap:.4rem}
+
 
 
 
@@ -254,6 +254,12 @@ textarea{resize:vertical;min-height:88px}
   .mo { border-radius: 16px; max-width: 560px; max-height: 85dvh; }
   .moh { display: none; }
 }
+
+.sw{background:#fff;border-bottom:1px solid #D0DFF0;flex-shrink:0;padding:.6rem .75rem;display:flex;flex-direction:column;gap:.4rem}
+.sw-row{width:100%;background:#EEF6FD;border:1px solid #D0DFF0;border-radius:8px;padding:.65rem 1rem;display:flex;align-items:center;gap:.65rem;box-sizing:border-box;font-family:'DM Sans',sans-serif;font-size:.88rem;color:#4A6A8A;cursor:pointer;transition:border-color .2s}
+.sw-row:hover,.sw-row:focus-within{border-color:#2E6DA4}
+.sw-row input{border:none;outline:none;background:transparent;flex:1;font-family:'DM Sans',sans-serif;font-size:.88rem;color:#1A3A5C;min-width:0}
+.sw-row input::placeholder{color:#4A6A8A}
 </style>
 </head>
 <body>
@@ -298,16 +304,14 @@ textarea{resize:vertical;min-height:88px}
     </div>
   </div>
   <div class="sw">
-    <div class="sb">
-      <span class="si">
-        <svg viewBox="0 0 24 24" fill="none" stroke="#4A6A8A" stroke-width="2.5" width="16" height="16"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
-      </span>
+    <div class="sw-row">
+      <svg viewBox="0 0 24 24" fill="none" stroke="#4A6A8A" stroke-width="2.5" width="16" height="16" style="flex-shrink:0"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
       <input type="text" id="srch" placeholder="Zoek een recept..." oninput="renderList()"/>
     </div>
-    <button class="gen-btn" onclick="openMod('mgen')">
-      <svg viewBox="0 0 24 24" fill="none" stroke="#4A6A8A" stroke-width="2" width="16" height="16"><path d="M12 2l2.4 7.4H22l-6.2 4.5 2.4 7.4L12 17l-6.2 4.3 2.4-7.4L2 9.4h7.6z"/></svg>
-      <span style="flex:1;text-align:left;font-size:.88rem;color:#4A6A8A;font-family:'DM Sans',sans-serif">Bedenk een recept...</span>
-      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#4A6A8A" stroke-width="2"><polyline points="9 18 15 12 9 6"/></svg>
+    <button class="sw-row" onclick="openMod('mgen')" style="border:1px solid #D0DFF0">
+      <svg viewBox="0 0 24 24" fill="none" stroke="#4A6A8A" stroke-width="2" width="16" height="16" style="flex-shrink:0"><path d="M12 2l2.4 7.4H22l-6.2 4.5 2.4 7.4L12 17l-6.2 4.3 2.4-7.4L2 9.4h7.6z"/></svg>
+      <span style="flex:1;text-align:left">Bedenk een recept...</span>
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#4A6A8A" stroke-width="2" style="flex-shrink:0"><polyline points="9 18 15 12 9 6"/></svg>
     </button>
   </div>
   <div class="fs" id="fbar">
