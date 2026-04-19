@@ -522,34 +522,22 @@ function renderList() {
   }
   empty.classList.add('hidden');
 
-  if (viewMode === 'list') {
-    // Sort alphabetically for list view
-    const sorted = [...filtered].sort((a,b) => a.name.localeCompare(b.name, 'nl'));
-    grid.className = 'recipe-list-view';
-    grid.innerHTML = sorted.map((r,i) => `
-      <div class="rcard-list" style="animation-delay:${i*0.03}s">
-        <span class="rcard-list-emoji" onclick="showDetail('${r.id}')">${r.emoji || CAT_EMOJI[r.category] || '🍴'}</span>
-        <div class="rcard-list-info" onclick="showDetail('${r.id}')">
-          <div class="rcard-list-title">${r.name}</div>
-          <div class="rcard-list-meta">${r.category||'overig'}${r.time ? ' · ' + r.time + ' min' : ''}${r.servings ? ' · ' + r.servings + ' pers.' : ''}</div>
-        </div>
-        <span class="rcard-list-arrow" onclick="showDetail('${r.id}')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="9 18 15 12 9 6"/></svg></span>
-        <button class="rcard-list-del" onclick="confirmDelete('${r.id}')" title="Verwijder">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/><path d="M9 6V4h6v2"/></svg>
-        </button>
-      </div>`).join('');
-  } else {
-    grid.className = 'recipe-grid';
-    grid.innerHTML = filtered.map((r,i) => `
-      <div class="rcard" onclick="showDetail('${r.id}')" style="animation-delay:${i*0.04}s">
-        <div class="rcard-emoji">${r.emoji || CAT_EMOJI[r.category] || '🍴'}</div>
-        <div class="rcard-body">
-          <div class="rcard-title">${r.name}</div>
-          <div class="rcard-info"><span>${r.category||'overig'}${r.time ? ' · '+r.time+'m' : ''}</span></div>
-        </div>
-      </div>`).join('');
-  }
+  const sorted = [...filtered].sort((a,b) => a.name.localeCompare(b.name, 'nl'));
+  grid.className = 'recipe-list-view';
+  grid.innerHTML = sorted.map((r,i) => `
+    <div class="rcard-list" style="animation-delay:${i*0.03}s">
+      <span class="rcard-list-emoji" onclick="showDetail('${r.id}')">${r.emoji || CAT_EMOJI[r.category] || '🍴'}</span>
+      <div class="rcard-list-info" onclick="showDetail('${r.id}')">
+        <div class="rcard-list-title">${r.name}</div>
+        <div class="rcard-list-meta">${r.category||'overig'}${r.time ? ' · ' + r.time + ' min' : ''}${r.servings ? ' · ' + r.servings + ' pers.' : ''}</div>
+      </div>
+      <span class="rcard-list-arrow" onclick="showDetail('${r.id}')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="9 18 15 12 9 6"/></svg></span>
+      <button class="rcard-list-del" onclick="confirmDelete('${r.id}')" title="Verwijder">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/><path d="M9 6V4h6v2"/></svg>
+      </button>
+    </div>`).join('');
 }
+
 
 function setFilter(cat, btn) {
   activeFilter = cat;
