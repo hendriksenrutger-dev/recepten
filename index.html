@@ -4,6 +4,7 @@
 <meta charset="UTF-8"/>
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover"/>
 <meta name="theme-color" content="#1A3A5C"/>
+<meta name="version" content="1776630011"/>
 <meta name="apple-mobile-web-app-capable" content="yes"/>
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"/>
 <meta name="apple-mobile-web-app-title" content="Cucina"/>
@@ -23,6 +24,14 @@
 html,body{height:100%;background:var(--cr);color:var(--tx);font-family:'DM Sans',sans-serif;overflow:hidden}
 #app{max-width:480px;margin:0 auto;height:100dvh;display:flex;flex-direction:column;overflow:hidden}
 .scr{flex:1;overflow-y:auto;-webkit-overflow-scrolling:touch}
+.sb{position:relative}
+.sb input{width:100%;background:#EEF6FD;border:1px solid #D0DFF0;border-radius:8px;padding:.6rem 1rem .6rem 2.75rem;color:#1A3A5C;font-family:'DM Sans',sans-serif;font-size:.88rem;outline:none}
+.sb input::placeholder{color:#4A6A8A !important;opacity:1}
+.sb input:focus{border-color:#2E6DA4}
+.gen-btn{margin:.4rem 0 0;background:#EEF6FD;border:1px solid #D0DFF0;border-radius:8px;padding:.6rem 1rem;cursor:pointer;display:flex;align-items:center;gap:.65rem;width:100%;transition:border-color .2s}
+.gen-btn:hover{border-color:#2E6DA4}
+.si{position:absolute;left:.85rem;top:50%;transform:translateY(-50%)}
+.si svg{width:16px;height:16px;stroke:#4A6A8A;stroke-width:2.5}
 .hide{display:none!important}
 ::-webkit-scrollbar{width:4px}::-webkit-scrollbar-track{background:transparent}::-webkit-scrollbar-thumb{background:var(--br);border-radius:2px}
 .ts{height:5px;background:repeating-linear-gradient(90deg,var(--bd) 0,var(--bd) 16px,var(--or) 16px,var(--or) 32px,var(--bm) 32px,var(--bm) 48px,var(--c2) 48px,var(--c2) 64px);flex-shrink:0}
@@ -54,16 +63,16 @@ html,body{height:100%;background:var(--cr);color:var(--tx);font-family:'DM Sans'
 .hb{background:rgba(255,255,255,.1);border:none;color:var(--wh);width:36px;height:36px;border-radius:8px;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:background .2s}
 .hb:hover{background:rgba(255,255,255,.2)}.hb svg{width:18px;height:18px}
 .sw{padding:.75rem 1rem .5rem;background:var(--wh);border-bottom:1px solid var(--br);flex-shrink:0}
-.sb{position:relative}
-.sb input{width:100%;background:var(--bp);border:1px solid var(--br);border-radius:8px;padding:.6rem 1rem .6rem 2.75rem;color:var(--tx);font-family:'DM Sans',sans-serif;font-size:.88rem;outline:none}
-.sb input::placeholder{color:var(--tm)}
-.gen-btn{margin:.4rem 0 0;background:var(--bp);border:1px solid var(--br);border-radius:8px;padding:.6rem 1rem;cursor:pointer;display:flex;align-items:center;gap:.65rem;width:100%;transition:border-color .2s}
-.gen-btn:hover{border-color:var(--bm)}
-.sb input:focus{border-color:var(--bm)}
-.si{position:absolute;left:.85rem;top:50%;transform:translateY(-50%);color:var(--tm)}.si svg{width:16px;height:16px;stroke:var(--tm)}
+
+
+
+
+
+
+
 .fs{display:flex;gap:.4rem;overflow-x:auto;padding:.5rem 1rem;background:var(--wh);border-bottom:1px solid var(--br);flex-shrink:0;scrollbar-width:none}
 .fs::-webkit-scrollbar{display:none}
-.fb{background:var(--bp);border:1px solid var(--br);color:var(--tm);font-family:'DM Sans',sans-serif;font-size:.75rem;font-weight:500;padding:.28rem .8rem;border-radius:99px;cursor:pointer;white-space:nowrap;transition:all .2s}
+.fb{background:var(--bp);border:1px solid var(--br);color:#4A6A8A;font-family:'DM Sans',sans-serif;font-size:.75rem;font-weight:500;padding:.28rem .8rem;border-radius:99px;cursor:pointer;white-space:nowrap;transition:all .2s}
 .fb:hover{border-color:var(--bm)}.fb.act{background:var(--bd);border-color:var(--bd);color:var(--wh)}
 .lh{display:flex;justify-content:space-between;align-items:center;padding:.6rem 1rem .3rem;flex-shrink:0}
 .lt{font-family:'Playfair Display',serif;font-size:.95rem;color:var(--tx)}.lc{font-size:.78rem;color:var(--tl)}
@@ -295,7 +304,7 @@ textarea{resize:vertical;min-height:88px}
     </div>
     <button class="gen-btn" onclick="openMod('mgen')">
       <span style="font-size:1rem;margin-left:.1rem;width:16px;display:flex;align-items:center;justify-content:center">&#10024;</span>
-      <span style="flex:1;text-align:left;font-size:.88rem;color:var(--tm);font-family:'DM Sans',sans-serif">Bedenk een recept...</span>
+      <span style="flex:1;text-align:left;font-size:.88rem;color:#4A6A8A;font-family:'DM Sans',sans-serif">Bedenk een recept...</span>
       <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--tl)" stroke-width="2"><polyline points="9 18 15 12 9 6"/></svg>
     </button>
   </div>
