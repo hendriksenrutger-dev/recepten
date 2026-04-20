@@ -389,11 +389,11 @@ textarea{resize:vertical;min-height:88px}
   </div>
   <div class="shb" id="shlist"></div>
   <div class="sh-actions">
-    <button class="sh-wa" onclick="shareShoppingWA()" style="flex:1">
-      <svg viewBox="0 0 24 24" fill="currentColor" width="17" height="17"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347z"/><path d="M12 0C5.373 0 0 5.373 0 12c0 2.136.564 4.14 1.542 5.877L.057 23.893l6.197-1.458A11.955 11.955 0 0 0 12 24c6.627 0 12-5.373 12-12S18.627 0 12 0zm0 21.818a9.818 9.818 0 0 1-5.032-1.388l-.36-.214-3.733.879.936-3.618-.236-.373A9.818 9.818 0 1 1 12 21.818z"/></svg>
-      Deel via WhatsApp
+    <button class="sh-wa" onclick="shareShoppingWA()">
+      <svg viewBox="0 0 24 24" fill="currentColor" width="17" height="17"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347z"/><path d="M12 0C5.373 0 0 5.373 0 12c0 2.136.564 4.14 1.542 5.877L.057 23.893l6.197-1.458A11.955 11.955 0 0 0 12 24c6.627 0 12-5.373 12-12S18.627 0 12 0z"/></svg>
     </button>
-    <button class="sh-cl" onclick="clearShopping()">Wis alles</button>
+    <button class="sh-cl" onclick="showQR()" style="background:var(--bd);color:white;border:none">&#128247; QR</button>
+    <button class="sh-cl" onclick="clearShopping()">Wis</button>
   </div>
 </div>
 
@@ -499,6 +499,20 @@ textarea{resize:vertical;min-height:88px}
       <button class="bs2" onclick="closeMod('mgen')">Sluiten</button>
       <button class="bp2" onclick="runGenerator()">&#10024; Genereer</button>
     </div>
+  </div>
+</div>
+
+<!-- MODAL: QR CODE -->
+<div class="ov hide" id="mqr">
+  <div class="mo">
+    <div class="moh"></div>
+    <div class="mhd"><span class="mht">&#128247; Scan met telefoon</span><button class="mc" onclick="closeMod('mqr')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6 6 18M6 6l12 12"/></svg></button></div>
+    <div class="mb" style="align-items:center">
+      <p style="font-size:.85rem;color:var(--tm);text-align:center;margin-bottom:.75rem">Scan deze QR code met je telefoon om de boodschappenlijst te openen in Cucina.</p>
+      <div id="qr-container" style="display:flex;justify-content:center;padding:.5rem"></div>
+      <p id="qr-error" style="font-size:.82rem;color:#C62828;text-align:center;display:none">Lijst te lang voor QR code. Vink items af en probeer opnieuw.</p>
+    </div>
+    <div class="mf"><button class="bs2" onclick="closeMod('mqr')">Sluiten</button></div>
   </div>
 </div>
 
@@ -1645,6 +1659,27 @@ function _discardGen() {
 }
 
 // -- INIT ------------------------------
+// Check for QR shop import
+(function() {
+  var params = new URLSearchParams(window.location.search);
+  var shopData = params.get('shop');
+  if (shopData) {
+    try {
+      var items = JSON.parse(decodeURIComponent(shopData));
+      if (Array.isArray(items) && items.length) {
+        items.forEach(function(orig) {
+          shopping.push({ orig: orig, stripped: stripIng(orig), recipe: 'QR import', checked: false, id: Date.now() + Math.random() });
+        });
+        localStorage.setItem(SK, JSON.stringify(shopping));
+        // Remove param from URL
+        window.history.replaceState({}, '', window.location.pathname);
+        // Show shopping after load
+        setTimeout(function(){ showShopping(); toast(items.length + ' items geïmporteerd!', 'ok'); }, 500);
+      }
+    } catch(e) {}
+  }
+})();
+
 loadRecipes();
 
 document.getElementById('pf-cam').addEventListener('change', function(){ handlePhoto(this); });
