@@ -1614,7 +1614,10 @@ function _saveGenRecipe() {
     document.getElementById('gen-result').innerHTML = '';
     document.getElementById('gen-input').value = '';
     window._genRecipe = null;
+    _genChatHistory = [];
     toast('"' + parsed.name + '" opgeslagen!', 'ok');
+    // Open the saved recipe so user can see it
+    showDetail(saved.id);
   }).catch(function(e) {
     toast('Fout bij opslaan: ' + e.message, 'er');
   });
