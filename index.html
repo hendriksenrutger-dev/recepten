@@ -1528,7 +1528,7 @@ function _sendGenChat() {
 
   var recipeContext = 'Recept: ' + window._genRecipe.name + '. Ingredienten: ' + (window._genRecipe.ingredients||[]).join(', ') + '. Bereiding: ' + (window._genRecipe.steps||[]).join(' ');
   
-  var systemMsg = 'Je helpt bij het aanpassen en beantwoorden van vragen over dit recept. Als de gebruiker iets wil aanpassen, geef dan eerst een korte uitleg en eindig ALTIJD met het volledig bijgewerkte recept als JSON op een nieuwe regel in dit exacte formaat: ###JSON###{"name":"...","category":"...","emoji":"...","servings":4,"time":45,"difficulty":"...","ingredients":["..."],"steps":["..."]}###ENDJSON### Als de gebruiker alleen een vraag stelt zonder aanpassing, geef dan gewoon antwoord zonder JSON. Antwoord altijd in het Nederlands.';
+  var systemMsg = 'Je bent een kookassistent. Beantwoord vragen over dit recept in het Nederlands. Als de gebruiker iets wil aanpassen, geef dan een korte uitleg. Sluit ALTIJD af met het bijgewerkte recept als geldig JSON object tussen de tekens <<< en >>>. Voorbeeld: <<<{"name":"...","ingredients":["..."],"steps":["..."]}>>> Als er geen aanpassing is, schrijf dan <<<GEEN>>> aan het einde.';
 
   var messages = [{ role: 'user', content: 'Context: ' + recipeContext }].concat(_genChatHistory);
 
@@ -1545,8 +1545,11 @@ function _sendGenChat() {
     if (t) t.remove();
 
     // Check if recipe was updated
-    var jsonMatch = text.match(/###JSON###([\s\S]*?)###ENDJSON###/);
-    if (jsonMatch) {
+    // Extract JSON between <<< and >>>
+    var jsonMatch = text.match(/<<<([\s\S]*?)>>>/);
+    var cleanText = text.replace(/<<<[\s\S]*?>>>/g, '').trim();
+    
+    if (jsonMatch && jsonMatch[1].trim() !== 'GEEN') {
       try {
         var updated = JSON.parse(jsonMatch[1].trim());
         window._genRecipe = Object.assign({}, window._genRecipe, updated);
@@ -1566,8 +1569,8 @@ function _sendGenChat() {
         _genChatHistory.push({ role: 'assistant', content: text });
       }
     } else {
-      _addChatMsg('ai', text);
-      _genChatHistory.push({ role: 'assistant', content: text });
+      _addChatMsg('ai', cleanText || text);
+      _genChatHistory.push({ role: 'assistant', content: cleanText || text });
     }
   }).catch(function(e) {
     var t = document.getElementById('gen-typing');
