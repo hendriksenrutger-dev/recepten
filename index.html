@@ -570,10 +570,26 @@ function loadRecipes() {
 }
 
 function saveDB(recipe) {
-  return sbf('/rest/v1/recipes', { method: 'POST', prefer: 'return=representation', body: JSON.stringify(recipe) }).then(function(d) {
-    return d ? d[0] : Object.assign({}, recipe, { id: Date.now().toString() });
-  }).catch(function() {
-    var r = Object.assign({}, recipe, { id: Date.now().toString() });
+  // Only send fields that Supabase expects
+  var clean = {
+    name: recipe.name || '',
+    category: recipe.category || 'overig',
+    emoji: recipe.emoji || null,
+    servings: parseInt(recipe.servings) || 4,
+    time: parseInt(recipe.time) || null,
+    difficulty: recipe.difficulty || null,
+    ingredients: recipe.ingredients || [],
+    steps: recipe.steps || [],
+    nutrition: recipe.nutrition || null,
+    source: recipe.source || null,
+    source_url: recipe.source_url || null
+  };
+  return sbf('/rest/v1/recipes', { method: 'POST', prefer: 'return=representation', body: JSON.stringify(clean) }).then(function(d) {
+    if (d && d[0]) { return d[0]; }
+    return Object.assign({}, clean, { id: Date.now().toString() });
+  }).catch(function(e) {
+    toast('Database fout: ' + e.message, 'er');
+    var r = Object.assign({}, clean, { id: Date.now().toString() });
     recipes.unshift(r);
     localStorage.setItem('cucina_recipes', JSON.stringify(recipes));
     return r;
@@ -1458,18 +1474,17 @@ function _showGenResult(r) {
 
 function _saveGenRecipe() {
   if (!window._genRecipe) return;
-  // Clean up recipe object before saving
-  var recipe = Object.assign({}, window._genRecipe);
-  delete recipe.id; // Let Supabase generate the ID
-  recipe.created_at = new Date().toISOString();
-  saveDB(recipe).then(function(saved) {
+  var parsed = window._genRecipe;
+  saveDB(parsed).then(function(saved) {
     if (!recipes.find(function(r){ return r.id == saved.id; })) recipes.unshift(saved);
     renderList();
     closeMod('mgen');
     document.getElementById('gen-result').innerHTML = '';
     document.getElementById('gen-input').value = '';
     window._genRecipe = null;
-    toast('Recept opgeslagen!', 'ok');
+    toast('"' + parsed.name + '" opgeslagen!', 'ok');
+  }).catch(function(e) {
+    toast('Fout bij opslaan: ' + e.message, 'er');
   });
 }
 
