@@ -1587,53 +1587,21 @@ function _applyGenUpdate() {
   if (!window._pendingUpdate) return;
   window._genRecipe = Object.assign({}, window._genRecipe, window._pendingUpdate);
   window._pendingUpdate = null;
-  var r = window._genRecipe;
-
-  // Update ingredients in DOM
-  var ingList = document.querySelector('#gen-result ul');
-  if (ingList) {
-    ingList.innerHTML = (r.ingredients||[]).map(function(i){
-      return '<li style="padding:.15rem 0;font-size:.85rem;border-bottom:1px solid var(--br)">' + i + '</li>';
-    }).join('');
-  }
-
-  // Update steps in DOM - find the steps container
-  var allDivs = document.querySelectorAll('#gen-result > div > div');
-  var stepsContainer = null;
-  allDivs.forEach(function(d) {
-    if (d.querySelector && d.querySelector('span[style*="font-size:1.1rem"]')) {
-      stepsContainer = d;
+  var history = _genChatHistory.slice();
+  history.push({ role: 'assistant', content: 'Recept is bijgewerkt!' });
+  _genChatHistory = history;
+  _showGenResult(window._genRecipe);
+  setTimeout(function() {
+    var chat = document.getElementById('gen-chat');
+    if (chat) chat.style.display = 'block';
+    var msgs = document.getElementById('gen-chat-msgs');
+    if (msgs) {
+      history.forEach(function(m) {
+        _addChatMsg(m.role === 'user' ? 'user' : 'ai', m.content);
+      });
+      msgs.scrollTop = msgs.scrollHeight;
     }
-  });
-
-  // Simpler: rebuild steps section by finding it after the "Bereiding" heading
-  var genResultDiv = document.getElementById('gen-result');
-  if (genResultDiv) {
-    var headings = genResultDiv.querySelectorAll('div[style*="Playfair"]');
-    headings.forEach(function(h) {
-      if (h.textContent === 'Bereiding') {
-        var parent = h.parentNode;
-        // Remove all step divs after the heading
-        var next = h.nextSibling;
-        while (next && next !== parent.lastChild) {
-          var toRemove = next;
-          next = next.nextSibling;
-          if (toRemove.tagName !== 'DIV' || !toRemove.style.display) parent.removeChild(toRemove);
-        }
-        // Add new steps
-        var frag = document.createDocumentFragment();
-        (r.steps||[]).forEach(function(s, i) {
-          var div = document.createElement('div');
-          div.style.cssText = 'display:flex;gap:.6rem;margin-bottom:.4rem';
-          div.innerHTML = '<span style="font-family:Playfair Display,serif;font-size:1.1rem;font-weight:700;color:var(--or);flex-shrink:0;min-width:18px">' + (i+1) + '</span><span style="font-size:.85rem;line-height:1.65">' + s + '</span>';
-          frag.appendChild(div);
-        });
-        parent.appendChild(frag);
-      }
-    });
-  }
-
-  _addChatMsg('ai', 'Recept is bijgewerkt!');
+  }, 50);
 }
 
 
