@@ -544,7 +544,7 @@ var cookRecipe = null;
 var timerInterval = null;
 var timerSecs = 0;
 
-// ── SUPABASE ──────────────────────────
+// -- SUPABASE --------------------------
 function sbf(path, o) {
   o = o || {};
   return fetch(SB_URL + path, Object.assign({}, o, {
@@ -614,7 +614,7 @@ function setDbStatus(ok) {
   document.getElementById('dbst').textContent = ok ? 'Verbonden' : 'Lokale opslag';
 }
 
-// ── SCREENS ───────────────────────────
+// -- SCREENS ---------------------------
 function showMain() {
   ['sp','dt','sh','ck'].forEach(function(id){ hide(id); });
   show('mn');
@@ -640,7 +640,7 @@ function showShopping() {
 function show(id){ document.getElementById(id).classList.remove('hide'); }
 function hide(id){ document.getElementById(id).classList.add('hide'); }
 
-// ── LIST ──────────────────────────────
+// -- LIST ------------------------------
 var CE = { vlees:'&#129385;', kip:'&#127831;', vis:'&#128032;', vegetarisch:'&#129382;', bbq:'&#128293;', soep:'&#129490;', pasta:'&#127837;', nagerecht:'&#127854;', brood:'&#127838;', voorgerecht:'&#127859;', bijgerecht:'&#127789;', overig:'&#127860;' };
 
 function renderList() {
@@ -679,7 +679,7 @@ function setFilter(cat, btn) {
   renderList();
 }
 
-// ── DETAIL ────────────────────────────
+// -- DETAIL ----------------------------
 function renderDetail(r) {
   var f = curSrv / (baseSrv || 4);
   var ings = (r.ingredients || []).map(function(i){ return scaleIng(i, f); });
@@ -751,7 +751,7 @@ function toggleIngCheck(li) { li.classList.toggle('ck'); }
 
 function safeHost(url) { try { return new URL(url).hostname.replace('www.',''); } catch(e){ return ''; } }
 
-// ── EDIT ──────────────────────────────
+// -- EDIT ------------------------------
 function editTitle(id) {
   var r = recipes.find(function(x){ return x.id == id; });
   if (!r) return;
@@ -804,7 +804,7 @@ function saveField(id, field) {
   toast('Opgeslagen', 'ok');
 }
 
-// ── NUTRITION ─────────────────────────
+// -- NUTRITION -------------------------
 function calcNutr(id) {
   var r = recipes.find(function(x){ return x.id == id; });
   if (!r || !r.ingredients || !r.ingredients.length) { toast('Geen ingredienten', 'er'); return; }
@@ -845,7 +845,7 @@ function calcNutr(id) {
   });
 }
 
-// ── COOK MODE ─────────────────────────
+// -- COOK MODE -------------------------
 function startCook(id) {
   cookRecipe = recipes.find(function(x){ return x.id == id; });
   if (!cookRecipe || !cookRecipe.steps || !cookRecipe.steps.length) { toast('Geen bereidingsstappen', 'er'); return; }
@@ -914,7 +914,7 @@ function stopTimer() {
   if (timerInterval) { clearInterval(timerInterval); timerInterval = null; }
 }
 
-// ── WAKE LOCK ─────────────────────────
+// -- WAKE LOCK -------------------------
 function requestWakeLock() {
   if ('wakeLock' in navigator) {
     navigator.wakeLock.request('screen').then(function(wl) { wakeLock = wl; }).catch(function(){});
@@ -924,7 +924,7 @@ function stopWakeLock() {
   if (wakeLock) { wakeLock.release().catch(function(){}); wakeLock = null; }
 }
 
-// ── SHOPPING ──────────────────────────
+// -- SHOPPING --------------------------
 function stripIng(ing) {
   var lower = ing.toLowerCase();
   var isMeasured = /\d/.test(ing) && /(gr?|kg|g\b|liter|ml|l\b|pond|kilo)/.test(lower);
@@ -1010,13 +1010,13 @@ function fallbackCopy(text) {
   toast('Gekopieerd! Plak in de AH app onder Mijn lijst', 'ok');
 }
 
-// ── SPOTIFY ──────────────────────────
+// -- SPOTIFY --------------------------
 function openSpotify() {
   window.open('spotify:', '_blank');
   setTimeout(function(){ window.open('https://open.spotify.com', '_blank'); }, 500);
 }
 
-// ── WIJNADVIES ────────────────────────
+// -- WIJNADVIES ------------------------
 function getWijnAdvies(id) {
   var r = recipes.find(function(x){ return x.id == id; });
   if (!r) return;
@@ -1043,7 +1043,7 @@ function getWijnAdvies(id) {
   });
 }
 
-// ── WHATSAPP SHARE ────────────────────
+// -- WHATSAPP SHARE --------------------
 function shareRecipeWA(id) {
   var r = recipes.find(function(x){ return x.id == id; });
   if (!r) return;
@@ -1054,7 +1054,7 @@ function shareRecipeWA(id) {
   window.open('https://wa.me/?text=' + encodeURIComponent(msg), '_blank');
 }
 
-// ── URL IMPORT ────────────────────────
+// -- URL IMPORT ------------------------
 function importUrl() {
   var url = document.getElementById('urli').value.trim();
   if (!url) { toast('Vul een URL in', 'er'); return; }
@@ -1093,7 +1093,7 @@ function importUrl() {
   });
 }
 
-// ── PHOTO SCAN ────────────────────────
+// -- PHOTO SCAN ------------------------
 function triggerCamera() { document.getElementById('pf-cam').click(); }
 function triggerGallery() { document.getElementById('pf-gal').click(); }
 function triggerFile() { document.getElementById('pf-doc').click(); }
@@ -1140,7 +1140,7 @@ function handlePhoto(input) {
   reader.readAsDataURL(file);
 }
 
-// ── FILE IMPORT ──────────────────────────
+// -- FILE IMPORT --------------------------
 function handleFile(input) {
   if (!input.files || !input.files[0]) return;
   var key = getAK();
@@ -1179,7 +1179,7 @@ function handleFile(input) {
   reader.readAsDataURL(file);
 }
 
-// ── MANUAL ────────────────────────────
+// -- MANUAL ----------------------------
 function saveManual() {
   var name = (document.getElementById('mn2').value || '').trim();
   if (!name) { toast('Vul een naam in', 'er'); return; }
@@ -1204,7 +1204,7 @@ function saveManual() {
   });
 }
 
-// ── EDIT CATEGORY ────────────────────
+// -- EDIT CATEGORY --------------------
 function editCategory(id) {
   id = id || window._editCatId;
   var r = recipes.find(function(x){ return x.id == id; });
@@ -1232,7 +1232,7 @@ function saveCat() {
   toast('Categorie opgeslagen', 'ok');
 }
 
-// ── DELETE ────────────────────────────
+// -- DELETE ----------------------------
 function deleteCurrentRecipe() {
   if (!confirm('Recept verwijderen?')) return;
   delDB(curId);
@@ -1241,7 +1241,7 @@ function deleteCurrentRecipe() {
   toast('Verwijderd', 'ok');
 }
 
-// ── FAB / MODAL / SETTINGS ────────────
+// -- FAB / MODAL / SETTINGS ------------
 function toggleFab() {
   fabOpen = !fabOpen;
   document.getElementById('fabm').classList.toggle('hide', !fabOpen);
@@ -1276,7 +1276,7 @@ document.addEventListener('keydown', function(e) {
   }
 });
 
-// ── TOAST ─────────────────────────────
+// -- TOAST -----------------------------
 function toast(msg, type) {
   type = type || '';
   var c = document.getElementById('tw');
@@ -1287,7 +1287,7 @@ function toast(msg, type) {
   setTimeout(function(){ if (el.parentNode) el.parentNode.removeChild(el); }, 3000);
 }
 
-// ── WEEKMENU GENERATOR ───────────────
+// -- WEEKMENU GENERATOR ---------------
 function openMenuRecipe(id) { closeMod("mmenu"); showDetail(id); }
 
 var _menuDays = [];
@@ -1401,7 +1401,7 @@ function _renderMenu() {
 }
 
 
-// ── RECIPE GENERATOR ─────────────────
+// -- RECIPE GENERATOR -----------------
 function setGenInput(val) {
   document.getElementById('gen-input').value = val;
 }
@@ -1676,7 +1676,7 @@ function _discardGen() {
   window._genRecipe = null;
 }
 
-// ── INIT ──────────────────────────────
+// -- INIT ------------------------------
 loadRecipes();
 
 document.getElementById('pf-cam').addEventListener('change', function(){ handlePhoto(this); });
@@ -1684,11 +1684,9 @@ document.getElementById('pf-gal').addEventListener('change', function(){ handleP
 
 document.getElementById('pf-doc').addEventListener('change', function(){ handleFile(this); });;
 
-// Unregister old service workers
+// Register service worker
 if ('serviceWorker' in navigator) {
-  navigator.serviceWorker.getRegistrations().then(function(regs) {
-    regs.forEach(function(reg) { reg.unregister(); });
-  });
+  navigator.serviceWorker.register('/recepten/sw.js').catch(function(){});
 }
 </script>
 </body>
