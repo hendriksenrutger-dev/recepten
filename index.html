@@ -1668,9 +1668,9 @@ function showQR() {
   qrEl.innerHTML = '<div class="sp2" style="margin:0 auto"></div>';
   openMod('mqr');
   var img = new Image();
-  img.src = 'https://api.qrserver.com/v1/create-qr-code/?size=220x220&data=' + encodeURIComponent(url) + '&color=1A3A5C&bgcolor=FDF8F0&margin=10';
-  img.width = 220;
-  img.height = 220;
+  img.src = 'https://api.qrserver.com/v1/create-qr-code/?size=340x340&data=' + encodeURIComponent(url) + '&color=1A3A5C&bgcolor=FDF8F0&margin=15';
+  img.width = 340;
+  img.height = 340;
   img.style.cssText = 'border-radius:8px;display:block';
   img.onload = function() { qrEl.innerHTML = ''; qrEl.appendChild(img); };
   img.onerror = function() { qrEl.innerHTML = '<p style="color:var(--tm);font-size:.85rem">Geen internet voor QR code.</p>'; };
