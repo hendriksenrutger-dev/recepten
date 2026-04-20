@@ -1411,6 +1411,10 @@ function runGenerator() {
   if (!input) { toast('Typ wat je wil maken', 'er'); return; }
   var key = getAK();
   if (!key) { toast('Sla eerst een API key op', 'er'); closeMod('mgen'); openSettings(); return; }
+  // Reset chat history for new generation
+  _genChatHistory = [];
+  window._genRecipe = null;
+  window._pendingUpdate = null;
   var status = document.getElementById('gen-status');
   var statusTxt = document.getElementById('gen-status-txt');
   var result = document.getElementById('gen-result');
@@ -1424,7 +1428,7 @@ function runGenerator() {
     body: JSON.stringify({
       model: 'claude-sonnet-4-6', max_tokens: 1500,
       system: 'Je bent een professionele kok. Bedenk serieuze, bestaande of kloppende recepten. Geen fantasy gerechten. Schrijf in het Nederlands. Geef ALLEEN een geldig JSON object terug, geen uitleg.',
-      messages: [{ role: 'user', content: 'Bedenk een lekker, serieus recept met: ' + input + '. Geef ALLEEN een JSON object terug met velden: name, category (vlees/kip/vis/vegetarisch/pasta/soep/nagerecht/brood/overig), emoji, servings, time, difficulty (Makkelijk/Gemiddeld/Moeilijk), ingredients (array), steps (array).' }]
+      messages: [{ role: 'user', content: 'Bedenk een lekker, serieus recept met: ' + input + '. Wees creatief en gevarieerd - kies niet altijd hetzelfde gerecht. Geef ALLEEN een JSON object terug met velden: name, category (vlees/kip/vis/vegetarisch/pasta/soep/nagerecht/brood/overig), emoji, servings, time, difficulty (Makkelijk/Gemiddeld/Moeilijk), ingredients (array), steps (array).' }]
     })
   }).then(function(r){ return r.json(); }).then(function(data) {
     if (data.error) throw new Error(data.error.message);
@@ -1527,7 +1531,7 @@ function _sendGenChat() {
 
   var r = window._genRecipe;
   var ctx = 'Recept: ' + r.name + '. Ingredienten: ' + (r.ingredients||[]).join(', ') + '. Bereiding: ' + (r.steps||[]).join(' ');
-  var systemMsg = 'Je bent een kookassistent. Beantwoord vragen over dit recept in het Nederlands. Als de gebruiker iets wil aanpassen, geef dan een korte uitleg EN eindig je antwoord met het volledig bijgewerkte recept als JSON tussen STARTJSON en ENDJSON tags. Schrijf ALLEEN de JSON tussen de tags, geen andere tekst. Als er geen aanpassing is schrijf STARTJSON GEEN ENDJSON.';
+  var systemMsg = 'Je bent een kookassistent. Beantwoord vragen over dit recept kort en in het Nederlands. Als de gebruiker iets wil aanpassen, beschrijf dan kort de aanpassing en sluit af met het woord RECEPTUPDATE gevolgd door een geldig JSON object met de gewijzigde velden (alleen name, ingredients, steps hoeven ingevuld). Geen andere tekst na het JSON object.';
   var messages = [{ role: 'user', content: 'Huidig recept: ' + ctx }].concat(_genChatHistory);
 
   fetch('https://api.anthropic.com/v1/messages', {
@@ -1538,53 +1542,62 @@ function _sendGenChat() {
     if (data.error) throw new Error(data.error.message);
     var fullText = (data.content||[]).map(function(b){ return b.text||''; }).join('').trim();
 
-    // Extract JSON between STARTJSON and ENDJSON
-    var jsonMatch = fullText.match(/STARTJSON\s*([\s\S]*?)\s*ENDJSON/);
-    var cleanText = fullText.replace(/STARTJSON[\s\S]*?ENDJSON/g, '').trim();
-    // Also clean any leftover <<< >>> markers
-    cleanText = cleanText.replace(/<<<[\s\S]*?>>>/g, '').trim();
-    cleanText = cleanText.replace(/###JSON###[\s\S]*?###ENDJSON###/g, '').trim();
-
-    // Remove typing indicator
     var t = document.getElementById('gen-typing');
     if (t) t.remove();
 
-    if (jsonMatch && jsonMatch[1].trim() !== 'GEEN') {
-      try {
-        var updated = JSON.parse(jsonMatch[1].trim());
-        // Merge with existing recipe
-        window._genRecipe = Object.assign({}, window._genRecipe, updated);
-        // Re-render the recipe card
-        _showGenResult(window._genRecipe);
-        // Restore chat after re-render
-        setTimeout(function() {
-          var chat = document.getElementById('gen-chat');
-          if (chat) chat.style.display = 'block';
-          // Re-add chat messages
-          var chatMsgs = document.getElementById('gen-chat-msgs');
-          if (chatMsgs) {
-            _genChatHistory.forEach(function(m) {
-              _addChatMsg(m.role === 'user' ? 'user' : 'ai', m.content);
-            });
-            var reply = cleanText || 'Recept is bijgewerkt!';
-            _addChatMsg('ai', reply);
-            _genChatHistory.push({ role: 'assistant', content: reply });
-          }
-        }, 50);
-        return;
-      } catch(e) {
-        // JSON parse failed, just show text
+    // Check for RECEPTUPDATE marker
+    var updateIdx = fullText.indexOf('RECEPTUPDATE');
+    if (updateIdx !== -1) {
+      var beforeUpdate = fullText.substring(0, updateIdx).trim();
+      var jsonPart = fullText.substring(updateIdx + 12).trim();
+      var jsonMatch = jsonPart.match(/\{[\s\S]*\}/);
+      
+      if (jsonMatch) {
+        try {
+          var updated = JSON.parse(jsonMatch[0]);
+          window._pendingUpdate = updated;
+          
+          // Show message with apply button
+          var msgDiv = document.createElement('div');
+          msgDiv.style.cssText = 'background:var(--bp);border-radius:10px;padding:.55rem .75rem;font-size:.82rem;line-height:1.55;color:var(--tx);max-width:88%;align-self:flex-start;display:flex;flex-direction:column;gap:.4rem';
+          msgDiv.innerHTML = '<span>' + (beforeUpdate || 'Ik pas het recept aan.') + '</span>' +
+            '<button onclick="_applyGenUpdate()" style="background:var(--or);color:white;border:none;border-radius:6px;padding:.35rem .75rem;font-size:.78rem;font-weight:600;cursor:pointer;width:fit-content">&#10003; Pas recept aan</button>';
+          msgs.appendChild(msgDiv);
+          msgs.scrollTop = msgs.scrollHeight;
+          
+          var replyText = beforeUpdate || 'Recept bijgewerkt';
+          _genChatHistory.push({ role: 'assistant', content: replyText });
+          return;
+        } catch(e) {}
       }
     }
 
-    _addChatMsg('ai', cleanText || fullText);
-    _genChatHistory.push({ role: 'assistant', content: cleanText || fullText });
+    // No update - just show text
+    _addChatMsg('ai', fullText);
+    _genChatHistory.push({ role: 'assistant', content: fullText });
 
   }).catch(function(e) {
     var t = document.getElementById('gen-typing');
     if (t) t.remove();
     _addChatMsg('ai', 'Fout: ' + e.message);
   });
+}
+
+function _applyGenUpdate() {
+  if (!window._pendingUpdate) return;
+  window._genRecipe = Object.assign({}, window._genRecipe, window._pendingUpdate);
+  window._pendingUpdate = null;
+  var history = _genChatHistory.slice();
+  _showGenResult(window._genRecipe);
+  setTimeout(function() {
+    var chat = document.getElementById('gen-chat');
+    if (chat) chat.style.display = 'block';
+    var chatMsgs = document.getElementById('gen-chat-msgs');
+    if (chatMsgs) {
+      history.forEach(function(m) { _addChatMsg(m.role === 'user' ? 'user' : 'ai', m.content); });
+      _addChatMsg('ai', 'Recept is bijgewerkt!');
+    }
+  }, 50);
 }
 
 
