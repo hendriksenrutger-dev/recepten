@@ -261,7 +261,6 @@ textarea{resize:vertical;min-height:88px}
 .sw-row input{border:none;outline:none;background:transparent;flex:1;font-family:'DM Sans',sans-serif;font-size:.88rem;color:#1A3A5C;min-width:0;height:44px;padding:0}
 .sw-row input::placeholder{color:#4A6A8A}
 </style>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
 </head>
 <body>
 <div id="app">
@@ -1660,6 +1659,75 @@ function _discardGen() {
 }
 
 // -- INIT ------------------------------
+// Check for QR shop import
+(function() {
+  var params = new URLSearchParams(window.location.search);
+  var shopData = params.get('shop');
+  if (shopData) {
+    try {
+      var items = JSON.parse(decodeURIComponent(shopData));
+      if (Array.isArray(items) && items.length) {
+        items.forEach(function(orig) {
+          shopping.push({ orig: orig, stripped: stripIng(orig), recipe: 'QR import', checked: false, id: Date.now() + Math.random() });
+        });
+        localStorage.setItem(SK, JSON.stringify(shopping));
+        // Remove param from URL
+        window.history.replaceState({}, '', window.location.pathname);
+        // Show shopping after load
+        setTimeout(function(){ showShopping(); toast(items.length + ' items geïmporteerd!', 'ok'); }, 500);
+      }
+    } catch(e) {}
+  }
+})();
+
+loadRecipes();
+
+document.getElementById('pf-cam').addEventListener('change', function(){ handlePhoto(this); });
+document.getElementById('pf-gal').addEventListener('change', function(){ handlePhoto(this); });
+
+document.getElementById('pf-doc').addEventListener('change', function(){ handleFile(this); });;
+
+// Register service worker
+if ('serviceWorker' in navigator) {
+  navigator.serviceWorker.register('/recepten/sw.js').catch(function(){});
+}
+</script>
+</body>
+</html>// -- QR CODE ----------------------------------------
+function showQR() {
+  var unchecked = shopping.filter(function(i){ return !i.checked; });
+  if (!unchecked.length) { toast('Geen items om te delen', 'er'); return; }
+  
+  var items = unchecked.map(function(i){ return i.orig; });
+  var data = JSON.stringify(items);
+  var url = 'https://hendriksenrutger-dev.github.io/recepten/?shop=' + encodeURIComponent(data);
+  
+  var qrEl = document.getElementById('qr-container');
+  var errEl = document.getElementById('qr-error');
+  errEl.style.display = 'none';
+  qrEl.innerHTML = '';
+  
+  if (url.length > 2953) {
+    errEl.style.display = 'block';
+    openMod('mqr');
+    return;
+  }
+  
+  // Use QR Server API - free, no key needed
+  var qrUrl = 'https://api.qrserver.com/v1/create-qr-code/?size=220x220&data=' + encodeURIComponent(url) + '&color=1A3A5C&bgcolor=FDF8F0&margin=10';
+  var img = document.createElement('img');
+  img.src = qrUrl;
+  img.width = 220;
+  img.height = 220;
+  img.style.borderRadius = '8px';
+  img.onerror = function() {
+    qrEl.innerHTML = '<p style="color:var(--tm);font-size:.85rem;text-align:center">Geen internet verbinding voor QR code.</p>';
+  };
+  qrEl.appendChild(img);
+  openMod('mqr');
+}
+
+// -- INIT // -- INIT ------------------------------
 // Check for QR shop import
 (function() {
   var params = new URLSearchParams(window.location.search);
