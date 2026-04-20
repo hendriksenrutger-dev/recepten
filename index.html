@@ -1517,7 +1517,6 @@ function _sendGenChat() {
   _addChatMsg('user', question);
   _genChatHistory.push({ role: 'user', content: question });
 
-  // Add typing indicator
   var msgs = document.getElementById('gen-chat-msgs');
   var typing = document.createElement('div');
   typing.id = 'gen-typing';
@@ -1526,58 +1525,68 @@ function _sendGenChat() {
   msgs.appendChild(typing);
   msgs.scrollTop = msgs.scrollHeight;
 
-  var recipeContext = 'Recept: ' + window._genRecipe.name + '. Ingredienten: ' + (window._genRecipe.ingredients||[]).join(', ') + '. Bereiding: ' + (window._genRecipe.steps||[]).join(' ');
-  
-  var systemMsg = 'Je bent een kookassistent. Beantwoord vragen over dit recept in het Nederlands. Als de gebruiker iets wil aanpassen, geef dan een korte uitleg. Sluit ALTIJD af met het bijgewerkte recept als geldig JSON object tussen de tekens <<< en >>>. Voorbeeld: <<<{"name":"...","ingredients":["..."],"steps":["..."]}>>> Als er geen aanpassing is, schrijf dan <<<GEEN>>> aan het einde.';
-
-  var messages = [{ role: 'user', content: 'Context: ' + recipeContext }].concat(_genChatHistory);
+  var r = window._genRecipe;
+  var ctx = 'Recept: ' + r.name + '. Ingredienten: ' + (r.ingredients||[]).join(', ') + '. Bereiding: ' + (r.steps||[]).join(' ');
+  var systemMsg = 'Je bent een kookassistent. Beantwoord vragen over dit recept in het Nederlands. Als de gebruiker iets wil aanpassen, geef dan een korte uitleg EN eindig je antwoord met het volledig bijgewerkte recept als JSON tussen STARTJSON en ENDJSON tags. Schrijf ALLEEN de JSON tussen de tags, geen andere tekst. Als er geen aanpassing is schrijf STARTJSON GEEN ENDJSON.';
+  var messages = [{ role: 'user', content: 'Huidig recept: ' + ctx }].concat(_genChatHistory);
 
   fetch('https://api.anthropic.com/v1/messages', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json', 'x-api-key': key, 'anthropic-version': '2023-06-01', 'anthropic-dangerous-direct-browser-access': 'true' },
-    body: JSON.stringify({ model: 'claude-sonnet-4-6', max_tokens: 800, system: systemMsg, messages: messages })
-  }).then(function(r){ return r.json(); }).then(function(data) {
+    body: JSON.stringify({ model: 'claude-sonnet-4-6', max_tokens: 1200, system: systemMsg, messages: messages })
+  }).then(function(r2){ return r2.json(); }).then(function(data) {
     if (data.error) throw new Error(data.error.message);
-    var text = (data.content||[]).map(function(b){ return b.text||''; }).join('').trim();
-    
+    var fullText = (data.content||[]).map(function(b){ return b.text||''; }).join('').trim();
+
+    // Extract JSON between STARTJSON and ENDJSON
+    var jsonMatch = fullText.match(/STARTJSON\s*([\s\S]*?)\s*ENDJSON/);
+    var cleanText = fullText.replace(/STARTJSON[\s\S]*?ENDJSON/g, '').trim();
+    // Also clean any leftover <<< >>> markers
+    cleanText = cleanText.replace(/<<<[\s\S]*?>>>/g, '').trim();
+    cleanText = cleanText.replace(/###JSON###[\s\S]*?###ENDJSON###/g, '').trim();
+
     // Remove typing indicator
     var t = document.getElementById('gen-typing');
     if (t) t.remove();
 
-    // Check if recipe was updated
-    // Extract JSON between <<< and >>>
-    var jsonMatch = text.match(/<<<([\s\S]*?)>>>/);
-    var cleanText = text.replace(/<<<[\s\S]*?>>>/g, '').trim();
-    
     if (jsonMatch && jsonMatch[1].trim() !== 'GEEN') {
       try {
         var updated = JSON.parse(jsonMatch[1].trim());
+        // Merge with existing recipe
         window._genRecipe = Object.assign({}, window._genRecipe, updated);
+        // Re-render the recipe card
         _showGenResult(window._genRecipe);
-        // Restore chat
-        var chat = document.getElementById('gen-chat');
-        if (chat) chat.style.display = 'block';
-        var chatMsgs = document.getElementById('gen-chat-msgs');
-        if (chatMsgs) {
-          _genChatHistory.forEach(function(m){ _addChatMsg(m.role === 'user' ? 'user' : 'ai', m.content); });
-        }
-        var reply = text.replace(/JSON:\s*\{[\s\S]*\}/, '').trim() || 'Recept aangepast!';
-        _addChatMsg('ai', reply);
-        _genChatHistory.push({ role: 'assistant', content: reply });
+        // Restore chat after re-render
+        setTimeout(function() {
+          var chat = document.getElementById('gen-chat');
+          if (chat) chat.style.display = 'block';
+          // Re-add chat messages
+          var chatMsgs = document.getElementById('gen-chat-msgs');
+          if (chatMsgs) {
+            _genChatHistory.forEach(function(m) {
+              _addChatMsg(m.role === 'user' ? 'user' : 'ai', m.content);
+            });
+            var reply = cleanText || 'Recept is bijgewerkt!';
+            _addChatMsg('ai', reply);
+            _genChatHistory.push({ role: 'assistant', content: reply });
+          }
+        }, 50);
+        return;
       } catch(e) {
-        _addChatMsg('ai', text);
-        _genChatHistory.push({ role: 'assistant', content: text });
+        // JSON parse failed, just show text
       }
-    } else {
-      _addChatMsg('ai', cleanText || text);
-      _genChatHistory.push({ role: 'assistant', content: cleanText || text });
     }
+
+    _addChatMsg('ai', cleanText || fullText);
+    _genChatHistory.push({ role: 'assistant', content: cleanText || fullText });
+
   }).catch(function(e) {
     var t = document.getElementById('gen-typing');
     if (t) t.remove();
     _addChatMsg('ai', 'Fout: ' + e.message);
   });
 }
+
 
 function _saveGenRecipe() {
   if (!window._genRecipe) return;
