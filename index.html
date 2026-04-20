@@ -93,8 +93,8 @@ html,body{height:100%;background:var(--cr);color:var(--tx);font-family:'DM Sans'
 .fam{display:flex;flex-direction:column;gap:.35rem;align-items:flex-end}.fam.hide{display:none}
 .fai{display:flex;align-items:center;gap:.5rem;animation:si .2s ease}
 @keyframes si{from{opacity:0;transform:translateX(8px)}to{opacity:1;transform:translateX(0)}}
-.fal{background:var(--wh);border:1px solid var(--br);padding:.28rem .7rem;border-radius:8px;font-size:.8rem;font-weight:500;color:var(--tx);box-shadow:var(--sh);white-space:nowrap}
-.fas{width:40px;height:40px;border-radius:50%;background:var(--wh);border:1px solid var(--br);color:var(--bd);cursor:pointer;display:flex;align-items:center;justify-content:center;box-shadow:var(--sh);transition:all .2s}
+.fal{background:#f0f4f8;border:1px solid #a0b8d0;padding:.28rem .7rem;border-radius:8px;font-size:.8rem;font-weight:500;color:#1A3A5C;box-shadow:0 4px 16px rgba(26,58,92,.25);white-space:nowrap}
+.fas{width:40px;height:40px;border-radius:50%;background:#f0f4f8;border:1px solid #a0b8d0;color:#1A3A5C;cursor:pointer;display:flex;align-items:center;justify-content:center;box-shadow:0 4px 16px rgba(26,58,92,.25);transition:all .2s}
 .fas svg{width:16px;height:16px}.fas:hover{background:var(--bd);color:var(--wh)}
 .fmb{width:52px;height:52px;border-radius:50%;background:var(--or);border:none;color:var(--wh);cursor:pointer;display:flex;align-items:center;justify-content:center;box-shadow:0 4px 18px rgba(232,100,42,.4);transition:transform .2s}
 .fmb:hover{transform:scale(1.08)}.fmb svg{width:22px;height:22px;transition:transform .25s}.fmb.open svg{transform:rotate(45deg)}
@@ -1465,11 +1465,115 @@ function _showGenResult(r) {
     '<div style="display:flex;gap:.5rem;padding:.85rem 1rem;border-top:1px solid var(--br)">' +
       '<button onclick="_saveGenRecipe()" style="flex:1;background:var(--bd);color:white;border:none;border-radius:8px;padding:.7rem;font-family:DM Sans,sans-serif;font-size:.85rem;font-weight:600;cursor:pointer">&#10003; Opslaan</button>' +
       '<button onclick="_genToShopping()" style="background:var(--bp);color:var(--bd);border:1px solid var(--br);border-radius:8px;padding:.7rem .9rem;font-size:1rem;cursor:pointer">&#128722;</button>' +
+      '<button onclick="_openGenChat()" style="background:var(--bp);color:var(--bd);border:1px solid var(--br);border-radius:8px;padding:.7rem .9rem;font-size:1rem;cursor:pointer" title="Vraag of pas aan">&#128172;</button>' +
       '<button onclick="_discardGen()" style="background:var(--bp);color:var(--tm);border:1px solid var(--br);border-radius:8px;padding:.7rem .9rem;font-family:DM Sans,sans-serif;font-size:.85rem;cursor:pointer">Weg</button>' +
+    '</div>' +
+    '<div id="gen-chat" style="display:none;border-top:1px solid var(--br)">' +
+      '<div id="gen-chat-msgs" style="max-height:200px;overflow-y:auto;padding:.75rem 1rem;display:flex;flex-direction:column;gap:.5rem"></div>' +
+      '<div style="display:flex;gap:.5rem;padding:.6rem 1rem;border-top:1px solid var(--br)">' +
+        '<input id="gen-chat-input" type="text" placeholder="Stel een vraag of pas aan..." style="flex:1;background:var(--bp);border:1px solid var(--br);border-radius:8px;padding:.5rem .75rem;font-size:.85rem;font-family:DM Sans,sans-serif;outline:none"/>' +
+        '<button onclick="_sendGenChat()" style="background:var(--or);color:white;border:none;border-radius:8px;padding:.5rem .85rem;font-size:.85rem;cursor:pointer">&#10148;</button>' +
+      '</div>' +
     '</div>' +
   '</div>';
 
   window._genRecipe = r;
+}
+
+var _genChatHistory = [];
+
+function _openGenChat() {
+  var chat = document.getElementById('gen-chat');
+  if (!chat) return;
+  chat.style.display = chat.style.display === 'none' ? 'block' : 'none';
+  if (chat.style.display === 'block') {
+    document.getElementById('gen-chat-input').focus();
+    if (_genChatHistory.length === 0) {
+      _addChatMsg('ai', 'Wat wil je aanpassen of weten over dit recept?');
+    }
+  }
+}
+
+function _addChatMsg(role, text) {
+  var msgs = document.getElementById('gen-chat-msgs');
+  if (!msgs) return;
+  var isAi = role === 'ai';
+  var div = document.createElement('div');
+  div.style.cssText = 'padding:.5rem .75rem;border-radius:10px;font-size:.83rem;line-height:1.55;max-width:90%;' + 
+    (isAi ? 'background:var(--bp);color:var(--tx);align-self:flex-start' : 'background:var(--bd);color:white;align-self:flex-end;margin-left:auto');
+  div.textContent = text;
+  msgs.appendChild(div);
+  msgs.scrollTop = msgs.scrollHeight;
+}
+
+function _sendGenChat() {
+  var input = document.getElementById('gen-chat-input');
+  var question = (input.value || '').trim();
+  if (!question || !window._genRecipe) return;
+  var key = getAK();
+  if (!key) { toast('Sla eerst een API key op', 'er'); return; }
+
+  input.value = '';
+  _addChatMsg('user', question);
+  _genChatHistory.push({ role: 'user', content: question });
+
+  // Add typing indicator
+  var msgs = document.getElementById('gen-chat-msgs');
+  var typing = document.createElement('div');
+  typing.id = 'gen-typing';
+  typing.style.cssText = 'padding:.5rem .75rem;border-radius:10px;font-size:.83rem;background:var(--bp);color:var(--tl);align-self:flex-start';
+  typing.textContent = '...';
+  msgs.appendChild(typing);
+  msgs.scrollTop = msgs.scrollHeight;
+
+  var recipeContext = 'Recept: ' + window._genRecipe.name + '. Ingredienten: ' + (window._genRecipe.ingredients||[]).join(', ') + '. Bereiding: ' + (window._genRecipe.steps||[]).join(' ');
+  
+  var systemMsg = 'Je helpt bij het aanpassen en beantwoorden van vragen over dit recept: ' + recipeContext + '. Als de gebruiker iets wil aanpassen aan het recept, geef dan aan het einde van je antwoord ALLEEN een volledig bijgewerkt JSON object op een nieuwe regel beginnnend met JSON: gevolgd door het object. Anders geef je alleen een antwoord in het Nederlands.';
+
+  var messages = [{ role: 'user', content: 'Context: ' + recipeContext }].concat(_genChatHistory);
+
+  fetch('https://api.anthropic.com/v1/messages', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', 'x-api-key': key, 'anthropic-version': '2023-06-01', 'anthropic-dangerous-direct-browser-access': 'true' },
+    body: JSON.stringify({ model: 'claude-sonnet-4-6', max_tokens: 800, system: systemMsg, messages: messages })
+  }).then(function(r){ return r.json(); }).then(function(data) {
+    if (data.error) throw new Error(data.error.message);
+    var text = (data.content||[]).map(function(b){ return b.text||''; }).join('').trim();
+    
+    // Remove typing indicator
+    var t = document.getElementById('gen-typing');
+    if (t) t.remove();
+
+    // Check if recipe was updated
+    var jsonMatch = text.match(/JSON:\s*(\{[\s\S]*\})/);
+    if (jsonMatch) {
+      try {
+        var updated = JSON.parse(jsonMatch[1]);
+        window._genRecipe = Object.assign({}, window._genRecipe, updated);
+        _showGenResult(window._genRecipe);
+        // Restore chat
+        var chat = document.getElementById('gen-chat');
+        if (chat) chat.style.display = 'block';
+        var chatMsgs = document.getElementById('gen-chat-msgs');
+        if (chatMsgs) {
+          _genChatHistory.forEach(function(m){ _addChatMsg(m.role === 'user' ? 'user' : 'ai', m.content); });
+        }
+        var reply = text.replace(/JSON:\s*\{[\s\S]*\}/, '').trim() || 'Recept aangepast!';
+        _addChatMsg('ai', reply);
+        _genChatHistory.push({ role: 'assistant', content: reply });
+      } catch(e) {
+        _addChatMsg('ai', text);
+        _genChatHistory.push({ role: 'assistant', content: text });
+      }
+    } else {
+      _addChatMsg('ai', text);
+      _genChatHistory.push({ role: 'assistant', content: text });
+    }
+  }).catch(function(e) {
+    var t = document.getElementById('gen-typing');
+    if (t) t.remove();
+    _addChatMsg('ai', 'Fout: ' + e.message);
+  });
 }
 
 function _saveGenRecipe() {
@@ -1503,6 +1607,7 @@ function _genToShopping() {
 }
 
 function _discardGen() {
+  _genChatHistory = [];
   document.getElementById('gen-result').innerHTML = '';
   document.getElementById('gen-input').value = '';
   window._genRecipe = null;
