@@ -1458,7 +1458,11 @@ function _showGenResult(r) {
 
 function _saveGenRecipe() {
   if (!window._genRecipe) return;
-  saveDB(window._genRecipe).then(function(saved) {
+  // Clean up recipe object before saving
+  var recipe = Object.assign({}, window._genRecipe);
+  delete recipe.id; // Let Supabase generate the ID
+  recipe.created_at = new Date().toISOString();
+  saveDB(recipe).then(function(saved) {
     if (!recipes.find(function(r){ return r.id == saved.id; })) recipes.unshift(saved);
     renderList();
     closeMod('mgen');
