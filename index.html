@@ -1528,7 +1528,7 @@ function _sendGenChat() {
 
   var recipeContext = 'Recept: ' + window._genRecipe.name + '. Ingredienten: ' + (window._genRecipe.ingredients||[]).join(', ') + '. Bereiding: ' + (window._genRecipe.steps||[]).join(' ');
   
-  var systemMsg = 'Je helpt bij het aanpassen en beantwoorden van vragen over dit recept: ' + recipeContext + '. Als de gebruiker iets wil aanpassen aan het recept, geef dan aan het einde van je antwoord ALLEEN een volledig bijgewerkt JSON object op een nieuwe regel beginnnend met JSON: gevolgd door het object. Anders geef je alleen een antwoord in het Nederlands.';
+  var systemMsg = 'Je helpt bij het aanpassen en beantwoorden van vragen over dit recept. Als de gebruiker iets wil aanpassen, geef dan eerst een korte uitleg en eindig ALTIJD met het volledig bijgewerkte recept als JSON op een nieuwe regel in dit exacte formaat: ###JSON###{"name":"...","category":"...","emoji":"...","servings":4,"time":45,"difficulty":"...","ingredients":["..."],"steps":["..."]}###ENDJSON### Als de gebruiker alleen een vraag stelt zonder aanpassing, geef dan gewoon antwoord zonder JSON. Antwoord altijd in het Nederlands.';
 
   var messages = [{ role: 'user', content: 'Context: ' + recipeContext }].concat(_genChatHistory);
 
@@ -1545,10 +1545,10 @@ function _sendGenChat() {
     if (t) t.remove();
 
     // Check if recipe was updated
-    var jsonMatch = text.match(/JSON:\s*(\{[\s\S]*\})/);
+    var jsonMatch = text.match(/###JSON###([\s\S]*?)###ENDJSON###/);
     if (jsonMatch) {
       try {
-        var updated = JSON.parse(jsonMatch[1]);
+        var updated = JSON.parse(jsonMatch[1].trim());
         window._genRecipe = Object.assign({}, window._genRecipe, updated);
         _showGenResult(window._genRecipe);
         // Restore chat
