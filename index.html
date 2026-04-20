@@ -1474,7 +1474,10 @@ function _showGenResult(r) {
 
 function _saveGenRecipe() {
   if (!window._genRecipe) return;
-  var parsed = window._genRecipe;
+  var parsed = Object.assign({}, window._genRecipe);
+  if (parsed.name && !parsed.name.startsWith('✨')) {
+    parsed.name = '✨ ' + parsed.name;
+  }
   saveDB(parsed).then(function(saved) {
     if (!recipes.find(function(r){ return r.id == saved.id; })) recipes.unshift(saved);
     renderList();
