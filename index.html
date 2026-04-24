@@ -748,7 +748,7 @@ function renderList() {
   list.innerHTML = sorted.map(function(r, i) {
     if (!r.name) return '';
     var em = r.emoji || CE[r.category] || '&#127860;';
-    var meta = (r.category || 'overig') + (r.time ? ' - ' + r.time + ' min' : '') + (r.servings ? ' - ' + r.servings + ' pers.' : '');
+    var meta = (r.category || 'overig') + (r.time ? ' - ' + r.time + ' min' : '');
     return '<div class="rc" style="animation-delay:' + (i * 0.03) + 's">' +
       '<span class="re" onclick="showDetail(\'' + r.id + '\')">' + em + '</span>' +
       '<div class="ri" onclick="showDetail(\'' + r.id + '\')">' +
