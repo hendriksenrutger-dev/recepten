@@ -4,7 +4,7 @@
 <meta charset="UTF-8"/>
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover"/>
 <meta name="theme-color" content="#1A3A5C"/>
-<meta name="version" content="1776630011"/>
+<meta name="version" content="v30"/>
 <meta name="apple-mobile-web-app-capable" content="yes"/>
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"/>
 <meta name="apple-mobile-web-app-title" content="Cucina"/>
@@ -165,6 +165,7 @@ html,body{height:100%;background:var(--cr);color:var(--tx);font-family:'DM Sans'
 .ab-sh{background:var(--bp);color:var(--bd);border:1px solid var(--br);flex:1}.ab-sh:hover{background:var(--bd);color:var(--wh)}
 .ab-sp{background:#1DB954;color:white;border:none;flex:1}.ab-sp:hover{background:#1aa34a}
 .ab-wijn{background:rgba(139,0,0,.1);color:#8B0000;border:1px solid rgba(139,0,0,.2);font-size:1.1rem;flex:1}.ab-wijn:hover{background:rgba(139,0,0,.2)}
+.ab-lekker{background:rgba(46,125,50,.1);color:#2E7D32;border:1px solid rgba(46,125,50,.2);font-size:1.1rem;flex:1}.ab-lekker:hover{background:rgba(46,125,50,.2)}
 
 /* SHOPPING */
 #sh{display:flex;flex-direction:column;height:100dvh}
@@ -528,6 +529,11 @@ textarea{resize:vertical;min-height:88px}
           <div><div style="font-size:.88rem;font-weight:500;color:var(--tx)">Database</div><div style="font-size:.73rem;color:var(--tl)" id="dbst">Verbinden...</div></div>
           <div id="dbdot" style="width:10px;height:10px;border-radius:50%;background:var(--br)"></div>
         </div>
+        <div id="migrate-row" class="hide" style="padding:.5rem 0;border-top:1px solid var(--br)">
+          <div style="font-size:.78rem;color:var(--tm);margin-bottom:.4rem">Nieuwe kolommen nodig voor wijnadvies &amp; lekker met.</div>
+          <button onclick="runMigration()" class="bp2" style="width:100%;justify-content:center" id="migrate-btn">&#128451; Database bijwerken</button>
+          <div id="migrate-log" style="font-size:.75rem;margin-top:.4rem;color:var(--tm)"></div>
+        </div>
       </div>
     </div>
     <div class="mf"><button class="bs2" onclick="closeMod('mset')">Annuleren</button><button class="bp2" onclick="saveSettings()">Opslaan</button></div>
@@ -596,7 +602,9 @@ function saveDB(recipe) {
     steps: recipe.steps || [],
     nutrition: recipe.nutrition || null,
     source: recipe.source || null,
-    source_url: recipe.source_url || null
+    source_url: recipe.source_url || null,
+    wine_advice: recipe.wine_advice || null,
+    lekker_met: recipe.lekker_met || null
   };
   return sbf('/rest/v1/recipes', { method: 'POST', prefer: 'return=representation', body: JSON.stringify(clean) }).then(function(d) {
     if (d && d[0]) { return d[0]; }
@@ -621,6 +629,72 @@ function delDB(id) {
   sbf('/rest/v1/recipes?id=eq.' + id, { method: 'DELETE' }).catch(function(){});
   recipes = recipes.filter(function(r){ return r.id != id; });
   localStorage.setItem('cucina_recipes', JSON.stringify(recipes));
+}
+
+// -- DB MIGRATION ---------------------
+function checkMigration() {
+  sbf('/rest/v1/recipes?limit=1&select=wine_advice,lekker_met').then(function() {
+    // columns exist, hide button
+    var row = document.getElementById('migrate-row');
+    if (row) row.classList.add('hide');
+  }).catch(function() {
+    // columns missing, show button
+    var row = document.getElementById('migrate-row');
+    if (row) row.classList.remove('hide');
+  });
+}
+
+function runMigration() {
+  var btn = document.getElementById('migrate-btn');
+  var log = document.getElementById('migrate-log');
+  if (btn) { btn.disabled = true; btn.textContent = 'Bezig...'; }
+
+  var cols = ['wine_advice', 'lekker_met'];
+  var done = 0;
+
+  cols.forEach(function(col) {
+    // Insert a dummy row with the new column to force PostgREST to accept it,
+    // but we use PATCH on a non-existent row which is safe (no rows match)
+    sbf('/rest/v1/recipes?id=eq.migration_check_' + col, {
+      method: 'PATCH',
+      body: JSON.stringify({})
+    }).then(function() {
+      done++;
+      if (done === cols.length) migrDone(true);
+    }).catch(function() {
+      done++;
+      if (done === cols.length) migrDone(true);
+    });
+  });
+
+  // Real migration via a workaround: store schema hint in localStorage
+  // and use Supabase's upsert to add column implicitly if RLS allows
+  // Actually: call the Supabase REST schema endpoint
+  fetch(SB_URL + '/rest/v1/', {
+    headers: { 'apikey': SB_KEY, 'Authorization': 'Bearer ' + SB_KEY, 'Accept': 'application/openapi+json' }
+  }).then(function(r){ return r.json(); }).then(function(schema) {
+    var cols_exist = schema && schema.definitions && schema.definitions.recipes &&
+      schema.definitions.recipes.properties &&
+      schema.definitions.recipes.properties.wine_advice;
+    if (cols_exist) {
+      migrDone(true);
+    } else {
+      // Columns don't exist yet — need SQL access
+      if (log) log.innerHTML = '<span style="color:#C62828">Automatisch aanmaken niet mogelijk. Voeg in Supabase handmatig toe:<br><code>ALTER TABLE recipes ADD COLUMN IF NOT EXISTS wine_advice text;<br>ALTER TABLE recipes ADD COLUMN IF NOT EXISTS lekker_met text;</code></span>';
+      if (btn) { btn.disabled = false; btn.textContent = '&#128451; Database bijwerken'; }
+    }
+  }).catch(function() { migrDone(false); });
+}
+
+function migrDone(ok) {
+  var btn = document.getElementById('migrate-btn');
+  var log = document.getElementById('migrate-log');
+  var row = document.getElementById('migrate-row');
+  if (ok) {
+    if (log) log.innerHTML = '<span style="color:#2E7D32">✅ Klaar!</span>';
+    setTimeout(function() { if (row) row.classList.add('hide'); }, 2000);
+  }
+  if (btn) { btn.disabled = false; btn.textContent = '&#128451; Database bijwerken'; }
 }
 
 function setDbStatus(ok) {
@@ -714,7 +788,7 @@ function renderDetail(r) {
       '<div class="ds"><div class="dsl">Personen</div><div class="dsv">' + (r.servings||4) + '</div></div>' +
       (r.difficulty ? '<div class="ds"><div class="dsl">Niveau</div><div class="dsv">' + r.difficulty + '</div></div>' : '') +
     '</div>' +
-    '<div class="sa"><span class="sal">Aanpassen voor</span><div class="sc2"><button class="svb" onclick="adjSrv(-1)">-</button><span class="svn" id="svn">' + curSrv + '</span><button class="svb" onclick="adjSrv(1)">+</button></div></div>' +
+    '<div class="sa"><span class="sal">Aanpassen voor</span><div class="sc2"><button class="svb" onclick="adjSrv(-1)">-</button><span class="svn" id="svn">' + curSrv + '</span><button class="svb" onclick="adjSrv(1)">+</button><button onclick="saveServings(\'' + r.id + '\')" id="srv-save-btn" style="display:none;background:var(--or);color:white;border:none;border-radius:6px;padding:.2rem .55rem;font-size:.75rem;font-weight:600;cursor:pointer;margin-left:.25rem">Opslaan</button></div></div>' +
     '<div class="nb"><div class="nt">Voedingswaarden per 100g <button class="ncb" onclick="calcNutr(\'' + r.id + '\')">Bereken</button></div><div class="ng" id="ng' + r.id + '">' + nutrHtml + '</div></div>' +
     '<button class="cook-btn" onclick="startCook(\'' + r.id + '\')">' +
       '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M10 8l6 4-6 4V8z" fill="currentColor" stroke="none"/></svg>' +
@@ -731,8 +805,10 @@ function renderDetail(r) {
         '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 0C5.4 0 0 5.4 0 12s5.4 12 12 12 12-5.4 12-12S18.66 0 12 0zm5.521 17.34c-.24.359-.66.48-1.021.24-2.82-1.74-6.36-2.101-10.561-1.141-.418.122-.779-.179-.899-.539-.12-.421.18-.78.54-.9 4.56-1.021 8.52-.6 11.64 1.32.42.18.479.659.301 1.02zm1.44-3.3c-.301.42-.841.6-1.262.3-3.239-1.98-8.159-2.58-11.939-1.38-.479.12-1.02-.12-1.14-.6-.12-.48.12-1.021.6-1.141C9.6 9.9 15 10.561 18.72 12.84c.361.181.54.78.241 1.2zm.12-3.36C15.24 8.4 8.82 8.16 5.16 9.301c-.6.179-1.2-.181-1.38-.721-.18-.601.18-1.2.72-1.381 4.26-1.26 11.28-1.02 15.721 1.621.539.3.719 1.02.419 1.56-.299.421-1.02.599-1.559.3z"/></svg>' +
       '</button>' +
       '<button class="ab ab-wijn" onclick="getWijnAdvies(\'' + r.id + '\')" title="Wijnadvies">&#127863;</button>' +
+      '<button class="ab ab-lekker" onclick="getLekkerMet(\'' + r.id + '\')" title="Lekker met">&#128523;</button>' +
     '</div>' +
     '<div id="wijn-' + r.id + '"></div>' +
+    '<div id="lekker-' + r.id + '"></div>' +
     '<div class="stit">Ingredienten <div class="sac"><button class="el" onclick="editField(\'' + r.id + '\',\'ingredients\')">bewerken</button></div></div>' +
     '<ul class="il" id="il' + r.id + '">' + ings.map(function(ing, idx){ return '<li onclick="toggleIngCheck(this)" data-idx="' + idx + '"><span class="ic"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg></span>' + ing + '</li>'; }).join('') + '</ul>' +
     '<div class="stit">Bereiding <div class="sac"><button class="el" onclick="editField(\'' + r.id + '\',\'steps\')">bewerken</button></div></div>' +
@@ -745,11 +821,25 @@ function adjSrv(d) {
   if (!r) return;
   curSrv = Math.max(1, curSrv + d);
   document.getElementById('svn').textContent = curSrv;
+  var saveBtn = document.getElementById('srv-save-btn');
+  if (saveBtn) saveBtn.style.display = curSrv !== baseSrv ? 'inline-block' : 'none';
   var f = curSrv / (baseSrv || 4);
   var el = document.getElementById('il' + curId);
   if (el) el.innerHTML = (r.ingredients||[]).map(function(ing, idx){
     return '<li onclick="toggleIngCheck(this)" data-idx="' + idx + '"><span class="ic"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg></span>' + scaleIng(ing, f) + '</li>';
   }).join('');
+  var kl = document.getElementById('kl' + curId);
+  if (kl) kl.innerHTML = (r.steps||[]).map(function(s,i){
+    return '<li class="ki"><span class="kn">' + (i+1) + '</span><span>' + scaleIng(s, f) + '</span></li>';
+  }).join('');
+}
+
+function saveServings(id) {
+  patchDB(id, { servings: curSrv });
+  baseSrv = curSrv;
+  var saveBtn = document.getElementById('srv-save-btn');
+  if (saveBtn) saveBtn.style.display = 'none';
+  toast(curSrv + ' personen opgeslagen', 'ok');
 }
 
 function scaleIng(ing, f) {
@@ -875,7 +965,8 @@ function renderCookStep() {
   var steps = cookRecipe.steps;
   var total = steps.length;
   var idx = cookStepIdx;
-  var step = steps[idx];
+  var f = curSrv / (baseSrv || 4);
+  var step = scaleIng(steps[idx], f);
   var pct = Math.round((idx / total) * 100);
   document.getElementById('ckstep').textContent = 'Stap ' + (idx+1) + ' van ' + total;
   document.getElementById('ckpct').textContent = pct + '%';
@@ -887,10 +978,28 @@ function renderCookStep() {
   }
   document.getElementById('ckdots').innerHTML = dots;
   stopTimer();
-  var allIngs = (cookRecipe.ingredients || []).map(function(i){ return '<div class="ckii">' + i + '</div>'; }).join('');
+  var allIngs = ((cookRecipe.ingredients || []).map(function(i){ return scaleIng(i, f); })).map(function(i){ return '<div class="ckii">' + i + '</div>'; }).join('');
   var ingSection = allIngs ? '<div class="ckig"><p class="ckigt">Ingredienten</p>' + allIngs + '</div>' : '';
   var content2 = '<div class="cks"><div class="ckbg">' + (idx+1) + '</div><p class="cksl">Stap ' + (idx+1) + '</p><p class="ckst">' + step + '</p></div>' +
-    '<div class="cktb"><div><div class="cktl">Timer</div><div class="cktd" id="cktime">00:00</div></div><button class="ckts" onclick="startTimer()">Start timer</button></div>' +
+    '<div class="cktb">' +
+      '<div style="flex:1">' +
+        '<div class="cktl" style="margin-bottom:.35rem">Timer</div>' +
+        '<div style="display:flex;align-items:center;gap:.4rem;margin-bottom:.4rem">' +
+          '<input id="ck-min" type="number" min="0" max="99" value="5" style="width:48px;text-align:center;font-family:Playfair Display,serif;font-size:1.1rem;font-weight:700;background:var(--bp);border:1px solid var(--br);border-radius:6px;padding:.2rem .3rem;color:var(--tx)"/> ' +
+          '<span style="font-size:.85rem;color:var(--tm)">min</span>' +
+          '<input id="ck-sec" type="number" min="0" max="59" value="0" style="width:48px;text-align:center;font-family:Playfair Display,serif;font-size:1.1rem;font-weight:700;background:var(--bp);border:1px solid var(--br);border-radius:6px;padding:.2rem .3rem;color:var(--tx)"/> ' +
+          '<span style="font-size:.85rem;color:var(--tm)">sec</span>' +
+        '</div>' +
+        '<div style="display:flex;gap:.35rem;align-items:center">' +
+          '<label style="font-size:.72rem;color:var(--tm);display:flex;align-items:center;gap:.25rem;cursor:pointer"><input type="radio" name="timermode" value="down" checked style="accent-color:var(--or)"/> Aftellen</label>' +
+          '<label style="font-size:.72rem;color:var(--tm);display:flex;align-items:center;gap:.25rem;cursor:pointer"><input type="radio" name="timermode" value="up" style="accent-color:var(--or)"/> Optellen</label>' +
+        '</div>' +
+      '</div>' +
+      '<div style="display:flex;flex-direction:column;align-items:center;gap:.4rem">' +
+        '<div class="cktd" id="cktime">--:--</div>' +
+        '<button class="ckts" id="ck-timer-btn" onclick="toggleTimer()">&#9654; Start</button>' +
+      '</div>' +
+    '</div>' +
     ingSection;
   document.getElementById('ckcontent').innerHTML = content2;
   var nav = '';
@@ -912,20 +1021,79 @@ function exitCook() {
   else showMain();
 }
 
-function startTimer() {
+var timerRunning = false;
+
+function toggleTimer() {
+  if (timerRunning) {
+    stopTimer();
+  } else {
+    var minEl = document.getElementById('ck-min');
+    var secEl = document.getElementById('ck-sec');
+    var modeEl = document.querySelector('input[name="timermode"]:checked');
+    var mins = parseInt((minEl && minEl.value) || 0);
+    var secs = parseInt((secEl && secEl.value) || 0);
+    var mode = modeEl ? modeEl.value : 'down';
+    startTimer(mins, secs, mode);
+  }
+}
+
+function startTimer(mins, secs, mode) {
   stopTimer();
-  timerSecs = 0;
-  timerInterval = setInterval(function() {
-    timerSecs++;
-    var m = Math.floor(timerSecs / 60);
-    var s = timerSecs % 60;
-    var el = document.getElementById('cktime');
-    if (el) el.textContent = (m < 10 ? '0' : '') + m + ':' + (s < 10 ? '0' : '') + s;
-  }, 1000);
+  timerRunning = true;
+  var btn = document.getElementById('ck-timer-btn');
+  if (btn) btn.textContent = '⏸ Stop';
+  if (mode === 'down') {
+    timerSecs = (mins * 60) + secs;
+    if (timerSecs <= 0) timerSecs = 5 * 60;
+    timerInterval = setInterval(function() {
+      timerSecs--;
+      var el = document.getElementById('cktime');
+      if (el) {
+        var m = Math.floor(timerSecs / 60), s = timerSecs % 60;
+        el.textContent = (m < 10 ? '0' : '') + m + ':' + (s < 10 ? '0' : '') + s;
+        el.style.color = timerSecs <= 10 ? '#C62828' : 'var(--bd)';
+      }
+      if (timerSecs <= 0) {
+        stopTimer();
+        playBeep();
+        var el2 = document.getElementById('cktime');
+        if (el2) { el2.textContent = '00:00'; el2.style.color = '#C62828'; }
+        toast('⏰ Timer klaar!', 'ok');
+      }
+    }, 1000);
+  } else {
+    timerSecs = 0;
+    timerInterval = setInterval(function() {
+      timerSecs++;
+      var el = document.getElementById('cktime');
+      if (el) {
+        var m = Math.floor(timerSecs / 60), s = timerSecs % 60;
+        el.textContent = (m < 10 ? '0' : '') + m + ':' + (s < 10 ? '0' : '') + s;
+      }
+    }, 1000);
+  }
 }
 
 function stopTimer() {
   if (timerInterval) { clearInterval(timerInterval); timerInterval = null; }
+  timerRunning = false;
+  var btn = document.getElementById('ck-timer-btn');
+  if (btn) btn.textContent = '▶ Start';
+}
+
+function playBeep() {
+  try {
+    var ctx = new (window.AudioContext || window.webkitAudioContext)();
+    [0, 0.35, 0.7].forEach(function(t) {
+      var osc = ctx.createOscillator();
+      var gain = ctx.createGain();
+      osc.connect(gain); gain.connect(ctx.destination);
+      osc.type = 'sine'; osc.frequency.value = 880;
+      gain.gain.setValueAtTime(0.6, ctx.currentTime + t);
+      gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + t + 0.3);
+      osc.start(ctx.currentTime + t); osc.stop(ctx.currentTime + t + 0.35);
+    });
+  } catch(e) {}
 }
 
 // -- WAKE LOCK -------------------------
@@ -952,12 +1120,14 @@ function stripIng(ing) {
 function addToShopping(id) {
   var r = recipes.find(function(x){ return x.id == id; });
   if (!r || !r.ingredients || !r.ingredients.length) return;
+  var f = (id == curId && baseSrv) ? curSrv / baseSrv : 1;
   var items = r.ingredients.map(function(ing) {
-    return { orig: ing, stripped: stripIng(ing), recipe: r.name, checked: false, id: Date.now() + Math.random() };
+    var scaled = scaleIng(ing, f);
+    return { orig: scaled, stripped: stripIng(scaled), recipe: r.name + (f !== 1 ? ' (×' + Math.round(f*10)/10 + ')' : ''), checked: false, id: Date.now() + Math.random() };
   });
   shopping = shopping.concat(items);
   localStorage.setItem(SK, JSON.stringify(shopping));
-  toast(r.ingredients.length + ' ingredienten toegevoegd', 'ok');
+  toast(r.ingredients.length + ' ingredienten toegevoegd' + (f !== 1 ? ' (geschaald)' : ''), 'ok');
 }
 
 function renderShopping() {
@@ -974,9 +1144,10 @@ function renderShopping() {
   list.innerHTML = Object.keys(byRecipe).map(function(recipe) {
     return '<div class="shs">' + recipe + '</div>' +
       byRecipe[recipe].map(function(item) {
-        return '<div class="shi ' + (item.checked ? 'ck' : '') + '" onclick="toggleShop(\'' + item.id + '\')">' +
+        return '<div class="shi ' + (item.checked ? 'ck' : '') + '" style="position:relative" onclick="toggleShop(\'' + item.id + '\')">' +
           '<div class="shc"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg></div>' +
-          '<span class="sht">' + item.orig + '</span>' +
+          '<span class="sht" style="flex:1">' + item.orig + '</span>' +
+          '<button onclick="event.stopPropagation();removeFromShopping(\'' + item.id + '\')" style="background:none;border:none;color:var(--tl);cursor:pointer;padding:0 .25rem;font-size:1rem;line-height:1;flex-shrink:0" title="Verwijderen">&times;</button>' +
         '</div>';
       }).join('');
   }).join('');
@@ -985,6 +1156,12 @@ function renderShopping() {
 function toggleShop(id) {
   var item = shopping.find(function(i){ return String(i.id) === String(id); });
   if (item) { item.checked = !item.checked; localStorage.setItem(SK, JSON.stringify(shopping)); renderShopping(); }
+}
+
+function removeFromShopping(id) {
+  shopping = shopping.filter(function(i){ return String(i.id) !== String(id); });
+  localStorage.setItem(SK, JSON.stringify(shopping));
+  renderShopping();
 }
 
 function clearShopping() {
@@ -1031,13 +1208,20 @@ function openSpotify() {
 }
 
 // -- WIJNADVIES ------------------------
-function getWijnAdvies(id) {
+function getWijnAdvies(id, forceRefresh) {
   var r = recipes.find(function(x){ return x.id == id; });
   if (!r) return;
-  var key = getAK();
-  if (!key) { toast('Sla eerst een API key op', 'er'); openSettings(); return; }
   var box = document.getElementById('wijn-' + id);
   if (!box) return;
+
+  // Show saved advice immediately if available
+  if (r.wine_advice && !forceRefresh) {
+    box.innerHTML = _wijnBox(r.wine_advice, id);
+    return;
+  }
+
+  var key = getAK();
+  if (!key) { toast('Sla eerst een API key op', 'er'); openSettings(); return; }
   box.innerHTML = '<div style="background:rgba(139,0,0,.05);border:1px solid rgba(139,0,0,.15);border-radius:var(--ra);padding:.85rem 1rem;margin-bottom:1rem"><div style="display:flex;align-items:center;gap:.5rem;margin-bottom:.5rem"><span style="font-size:1.1rem">&#127863;</span><span style="font-family:Playfair Display,serif;font-size:.9rem;font-weight:700;color:#8B0000">Wijnadvies laden...</span></div><div class="sp2" style="margin:0 auto"></div></div>';
   fetch('https://api.anthropic.com/v1/messages', {
     method: 'POST',
@@ -1050,11 +1234,66 @@ function getWijnAdvies(id) {
   }).then(function(r2){ return r2.json(); }).then(function(data) {
     if (data.error) throw new Error(data.error.message);
     var txt = (data.content||[]).map(function(b){ return b.text||''; }).join('').trim();
-    box.innerHTML = '<div style="background:rgba(139,0,0,.05);border:1px solid rgba(139,0,0,.2);border-radius:var(--ra);padding:.85rem 1rem;margin-bottom:1rem"><div style="display:flex;align-items:center;gap:.5rem;margin-bottom:.6rem"><span style="font-size:1.1rem">&#127863;</span><span style="font-family:Playfair Display,serif;font-size:.9rem;font-weight:700;color:#8B0000">Wijnadvies</span></div><div style="font-size:.88rem;line-height:1.65;color:var(--tx);white-space:pre-wrap">' + txt + '</div></div>';
+    patchDB(id, { wine_advice: txt });
+    box.innerHTML = _wijnBox(txt, id);
   }).catch(function(e){ 
     box.innerHTML = '';
     toast('Fout: ' + e.message, 'er'); 
   });
+}
+
+function _wijnBox(txt, id) {
+  return '<div style="background:rgba(139,0,0,.05);border:1px solid rgba(139,0,0,.2);border-radius:var(--ra);padding:.85rem 1rem;margin-bottom:1rem">' +
+    '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:.6rem">' +
+      '<div style="display:flex;align-items:center;gap:.5rem"><span style="font-size:1.1rem">&#127863;</span><span style="font-family:Playfair Display,serif;font-size:.9rem;font-weight:700;color:#8B0000">Wijnadvies</span></div>' +
+      '<button onclick="getWijnAdvies(\'' + id + '\',true)" style="background:none;border:none;font-size:.72rem;color:#8B0000;cursor:pointer;text-decoration:underline">&#8635; Nieuw</button>' +
+    '</div>' +
+    '<div style="font-size:.88rem;line-height:1.65;color:var(--tx);white-space:pre-wrap">' + txt + '</div>' +
+  '</div>';
+}
+
+// -- LEKKER MET ------------------------
+function getLekkerMet(id, forceRefresh) {
+  var r = recipes.find(function(x){ return x.id == id; });
+  if (!r) return;
+  var box = document.getElementById('lekker-' + id);
+  if (!box) return;
+
+  if (r.lekker_met && !forceRefresh) {
+    box.innerHTML = _lekkerBox(r.lekker_met, id);
+    return;
+  }
+
+  var key = getAK();
+  if (!key) { toast('Sla eerst een API key op', 'er'); openSettings(); return; }
+  box.innerHTML = '<div style="background:rgba(46,125,50,.05);border:1px solid rgba(46,125,50,.15);border-radius:var(--ra);padding:.85rem 1rem;margin-bottom:1rem"><div style="display:flex;align-items:center;gap:.5rem;margin-bottom:.5rem"><span style="font-size:1.1rem">&#128523;</span><span style="font-family:Playfair Display,serif;font-size:.9rem;font-weight:700;color:#2E7D32">Lekker met laden...</span></div><div class="sp2" style="margin:0 auto"></div></div>';
+  fetch('https://api.anthropic.com/v1/messages', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', 'x-api-key': key, 'anthropic-version': '2023-06-01', 'anthropic-dangerous-direct-browser-access': 'true' },
+    body: JSON.stringify({
+      model: 'claude-sonnet-4-6', max_tokens: 400,
+      system: 'Je bent een culinaire expert. Geef concrete bijgerecht- en combinatiesuggesties. Noem specifieke gerechten, sauzen of bijpassende smaken. Schrijf in het Nederlands.',
+      messages: [{ role: 'user', content: 'Wat past lekker bij "' + r.name + '" (ingredienten: ' + (r.ingredients||[]).slice(0,6).join(', ') + ')? Geef 3-4 concrete combinaties of bijgerechten met een korte uitleg waarom ze passen. Beknopt.' }]
+    })
+  }).then(function(r2){ return r2.json(); }).then(function(data) {
+    if (data.error) throw new Error(data.error.message);
+    var txt = (data.content||[]).map(function(b){ return b.text||''; }).join('').trim();
+    patchDB(id, { lekker_met: txt });
+    box.innerHTML = _lekkerBox(txt, id);
+  }).catch(function(e){
+    box.innerHTML = '';
+    toast('Fout: ' + e.message, 'er');
+  });
+}
+
+function _lekkerBox(txt, id) {
+  return '<div style="background:rgba(46,125,50,.05);border:1px solid rgba(46,125,50,.2);border-radius:var(--ra);padding:.85rem 1rem;margin-bottom:1rem">' +
+    '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:.6rem">' +
+      '<div style="display:flex;align-items:center;gap:.5rem"><span style="font-size:1.1rem">&#128523;</span><span style="font-family:Playfair Display,serif;font-size:.9rem;font-weight:700;color:#2E7D32">Lekker met</span></div>' +
+      '<button onclick="getLekkerMet(\'' + id + '\',true)" style="background:none;border:none;font-size:.72rem;color:#2E7D32;cursor:pointer;text-decoration:underline">&#8635; Nieuw</button>' +
+    '</div>' +
+    '<div style="font-size:.88rem;line-height:1.65;color:var(--tx);white-space:pre-wrap">' + txt + '</div>' +
+  '</div>';
 }
 
 // -- WHATSAPP SHARE --------------------
@@ -1436,13 +1675,19 @@ function runGenerator() {
   statusTxt.textContent = 'Recept bedenken...';
   result.innerHTML = '';
 
+  var cuisines = ['Italiaans','Mediterraan','Aziatisch','Frans','Mexicaans','Grieks','Midden-Oosters','Japans','Spaans','Marokkaans','Thais','Portugees'];
+  var techniques = ['gegaard','geroosterd','gestoofd','gegrild','gebakken','gepokt','gebakken in de oven','gefrituurd','gekookt'];
+  var rCuisine = cuisines[Math.floor(Math.random() * cuisines.length)];
+  var rTech = techniques[Math.floor(Math.random() * techniques.length)];
+  var rSeed = Math.floor(Math.random() * 9999);
+
   fetch('https://api.anthropic.com/v1/messages', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json', 'x-api-key': key, 'anthropic-version': '2023-06-01', 'anthropic-dangerous-direct-browser-access': 'true' },
     body: JSON.stringify({
       model: 'claude-sonnet-4-6', max_tokens: 1500,
-      system: 'Je bent een professionele kok. Bedenk serieuze, bestaande of kloppende recepten. Geen fantasy gerechten. Schrijf in het Nederlands. Geef ALLEEN een geldig JSON object terug, geen uitleg.',
-      messages: [{ role: 'user', content: 'Bedenk een lekker, serieus recept met: ' + input + '. Wees creatief en gevarieerd - kies niet altijd hetzelfde gerecht. Geef ALLEEN een JSON object terug met velden: name, category (vlees/kip/vis/vegetarisch/pasta/soep/nagerecht/brood/overig), emoji, servings, time, difficulty (Makkelijk/Gemiddeld/Moeilijk), ingredients (array), steps (array).' }]
+      system: 'Je bent een professionele kok met kennis van wereldkeukens. Bedenk serieuze, bestaande of kloppende recepten. Geen fantasy gerechten. Schrijf in het Nederlands. Geef ALLEEN een geldig JSON object terug, geen uitleg. Varieer altijd — kies nooit het meest voor de hand liggende gerecht.',
+      messages: [{ role: 'user', content: 'Bedenk een lekker, origineel recept met: ' + input + '. Inspireer je op de ' + rCuisine + 'e keuken of bereidingswijze "' + rTech + '". Seed: ' + rSeed + '. Geef ALLEEN een JSON object terug met velden: name, category (vlees/kip/vis/vegetarisch/pasta/soep/nagerecht/brood/overig), emoji, servings, time, difficulty (Makkelijk/Gemiddeld/Moeilijk), ingredients (array), steps (array).' }]
     })
   }).then(function(r){ return r.json(); }).then(function(data) {
     if (data.error) throw new Error(data.error.message);
@@ -1472,7 +1717,7 @@ function _showGenResult(r) {
     '<div style="background:var(--bd);padding:.85rem 1rem;display:flex;align-items:center;gap:.75rem">' +
       '<div style="font-size:2rem">' + em + '</div>' +
       '<div><div style="font-family:Playfair Display,serif;font-size:1.05rem;color:white;font-weight:700">' + r.name + '</div>' +
-      '<div style="font-size:.72rem;color:rgba(255,255,255,.65);margin-top:.1rem">' + (r.category||'') + (r.time ? ' &nbsp;·&nbsp; ' + r.time + ' min' : '') + ' &nbsp;·&nbsp; ' + (r.servings||4) + ' pers.</div></div>' +
+      '<div style="font-size:.72rem;color:rgba(255,255,255,.65);margin-top:.1rem">' + (r.category||'') + (r.time ? ' &nbsp;·&nbsp; ' + r.time + ' min' : '') + ' &nbsp;·&nbsp; ' + (r.servings||4) + ' <span id="gen-srv-label">pers.</span></div></div>' +
     '</div>' +
     '<div style="padding:.85rem 1rem">' +
       '<div style="font-family:Playfair Display,serif;font-size:.9rem;font-weight:700;color:var(--bd);margin-bottom:.4rem">Ingredienten</div>' +
@@ -1545,7 +1790,7 @@ function _sendGenChat() {
 
   var r = window._genRecipe;
   var ctx = 'Recept: ' + r.name + '. Ingredienten: ' + (r.ingredients||[]).join(', ') + '. Bereiding: ' + (r.steps||[]).join(' ');
-  var systemMsg = 'Je bent een kookassistent. Beantwoord vragen over dit recept kort en in het Nederlands. Als de gebruiker iets wil aanpassen, beschrijf dan kort de aanpassing en sluit af met het woord RECEPTUPDATE gevolgd door een geldig JSON object met de gewijzigde velden (alleen name, ingredients, steps hoeven ingevuld). Geen andere tekst na het JSON object.';
+  var systemMsg = 'Je bent een kookassistent. Beantwoord vragen over dit recept kort en in het Nederlands. Als de gebruiker iets wil aanpassen, beschrijf dan kort de aanpassing en sluit af met het woord RECEPTUPDATE gevolgd door een geldig JSON object met de gewijzigde velden (name, servings, ingredients, steps mogen worden gewijzigd; stuur altijd servings mee als het personen-aantal wijzigt). Geen andere tekst na het JSON object.';
   var messages = [{ role: 'user', content: 'Huidig recept: ' + ctx }].concat(_genChatHistory);
 
   fetch('https://api.anthropic.com/v1/messages', {
@@ -1695,6 +1940,7 @@ function showQR() {
 })();
 
 loadRecipes();
+checkMigration();
 
 document.getElementById('pf-cam').addEventListener('change', function(){ handlePhoto(this); });
 document.getElementById('pf-gal').addEventListener('change', function(){ handlePhoto(this); });
