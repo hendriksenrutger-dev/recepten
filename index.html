@@ -175,13 +175,7 @@ html,body{height:100%;background:var(--cr);color:var(--tx);font-family:'DM Sans'
 .rph-empty:hover{border-color:var(--bm)}
 .rph-empty span{font-size:1.1rem;line-height:1}
 .rph-empty small{font-size:.5rem;color:var(--tl);margin-top:.1rem}
-.det-photo{width:90px;height:90px;border-radius:10px;object-fit:cover;display:block;margin:0 auto .75rem}
-.det-photo-wrap{position:relative;width:90px;margin:0 auto .75rem}
-.det-photo-empty{width:90px;height:90px;border:2px dashed var(--br);border-radius:10px;display:flex;flex-direction:column;align-items:center;justify-content:center;cursor:pointer;background:var(--bp);margin:0 auto .75rem;transition:border-color .2s}
-.det-photo-empty:hover{border-color:var(--bm)}
-.det-photo-empty span{font-size:1.8rem}
-.det-photo-empty small{font-size:.72rem;color:var(--tl);margin-top:.25rem}
-.det-photo-edit{position:absolute;bottom:4px;right:4px;background:rgba(0,0,0,.55);color:#fff;border:none;border-radius:50%;width:24px;height:24px;font-size:.8rem;cursor:pointer;display:flex;align-items:center;justify-content:center}
+
 
 /* SHOPPING */
 #sh{display:flex;flex-direction:column;height:100dvh}
@@ -805,18 +799,7 @@ function renderDetail(r) {
     '<div class="nv"><div class="nvn">' + r.nutrition.fat + 'g</div><div class="nvl">vet</div></div>'
     : '<div style="grid-column:1/-1;font-size:.8rem;color:var(--tl);text-align:center;padding:.35rem">Klik "Bereken" om op te halen</div>';
 
-  var photoDetHtml = r.photo_url
-    ? '<div class="det-photo-wrap">' +
-        '<img class="det-photo" src="' + r.photo_url + '" alt=""/>' +
-        '<button class="det-photo-edit" onclick="triggerPhotoUpload(\'' + r.id + '\')" title="Foto wijzigen">&#128247;</button>' +
-      '</div>'
-    : '<div class="det-photo-empty" onclick="triggerPhotoUpload(\'' + r.id + '\')">' +
-        '<span>&#128247;</span>' +
-        '<small>Voeg foto toe</small>' +
-      '</div>';
-
   document.getElementById('dbody').innerHTML =
-    photoDetHtml +
     '<div class="dei">' + em + '</div>' +
     '<div class="dtg" id="dtg-' + r.id + '"><span class="tag" style="cursor:pointer" onclick="window._editCatId=\'' + r.id + '\';editCategory()" title="Categorie wijzigen">' + (r.category||'overig') + ' &#9998;</span>' + (r.difficulty ? '<span class="tag" style="background:rgba(232,100,42,.1);color:var(--or)">' + r.difficulty + '</span>' : '') + '</div>' +
     '<div class="dtw"><h2 class="dti" id="dtitl">' + r.name + '</h2><button class="el" onclick="editTitle(\'' + r.id + '\')">bewerken</button></div>' +
