@@ -4,7 +4,7 @@
 <meta charset="UTF-8"/>
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover"/>
 <meta name="theme-color" content="#1A3A5C"/>
-<meta name="version" content="v31"/>
+<meta name="version" content="v32"/>
 <meta name="apple-mobile-web-app-capable" content="yes"/>
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"/>
 <meta name="apple-mobile-web-app-title" content="Cucina"/>
@@ -166,6 +166,22 @@ html,body{height:100%;background:var(--cr);color:var(--tx);font-family:'DM Sans'
 .ab-sp{background:#1DB954;color:white;border:none;flex:1}.ab-sp:hover{background:#1aa34a}
 .ab-wijn{background:rgba(139,0,0,.1);color:#8B0000;border:1px solid rgba(139,0,0,.2);font-size:1.1rem;flex:1}.ab-wijn:hover{background:rgba(139,0,0,.2)}
 .ab-lekker{background:rgba(46,125,50,.1);color:#2E7D32;border:1px solid rgba(46,125,50,.2);font-size:1.1rem;flex:1}.ab-lekker:hover{background:rgba(46,125,50,.2)}
+
+/* PHOTO */
+.rph{width:52px;height:52px;border-radius:8px;object-fit:cover;flex-shrink:0;cursor:pointer;display:block}
+.rph-wrap{position:relative;width:52px;height:52px;flex-shrink:0}
+.rph-edit{position:absolute;bottom:2px;right:2px;background:rgba(0,0,0,.55);color:#fff;border:none;border-radius:50%;width:18px;height:18px;font-size:.65rem;cursor:pointer;display:flex;align-items:center;justify-content:center;padding:0}
+.rph-empty{width:52px;height:52px;border:2px dashed var(--br);border-radius:8px;display:flex;flex-direction:column;align-items:center;justify-content:center;cursor:pointer;flex-shrink:0;background:var(--bp);transition:border-color .2s}
+.rph-empty:hover{border-color:var(--bm)}
+.rph-empty span{font-size:1.1rem;line-height:1}
+.rph-empty small{font-size:.5rem;color:var(--tl);margin-top:.1rem}
+.det-photo{width:90px;height:90px;border-radius:10px;object-fit:cover;display:block;margin:0 auto .75rem}
+.det-photo-wrap{position:relative;width:90px;margin:0 auto .75rem}
+.det-photo-empty{width:90px;height:90px;border:2px dashed var(--br);border-radius:10px;display:flex;flex-direction:column;align-items:center;justify-content:center;cursor:pointer;background:var(--bp);margin:0 auto .75rem;transition:border-color .2s}
+.det-photo-empty:hover{border-color:var(--bm)}
+.det-photo-empty span{font-size:1.8rem}
+.det-photo-empty small{font-size:.72rem;color:var(--tl);margin-top:.25rem}
+.det-photo-edit{position:absolute;bottom:4px;right:4px;background:rgba(0,0,0,.55);color:#fff;border:none;border-radius:50%;width:24px;height:24px;font-size:.8rem;cursor:pointer;display:flex;align-items:center;justify-content:center}
 
 /* SHOPPING */
 #sh{display:flex;flex-direction:column;height:100dvh}
@@ -604,7 +620,8 @@ function saveDB(recipe) {
     source: recipe.source || null,
     source_url: recipe.source_url || null,
     wine_advice: recipe.wine_advice || null,
-    lekker_met: recipe.lekker_met || null
+    lekker_met: recipe.lekker_met || null,
+    photo_url: recipe.photo_url || null
   };
   return sbf('/rest/v1/recipes', { method: 'POST', prefer: 'return=representation', body: JSON.stringify(clean) }).then(function(d) {
     if (d && d[0]) { return d[0]; }
@@ -749,8 +766,17 @@ function renderList() {
     if (!r.name) return '';
     var em = r.emoji || CE[r.category] || '&#127860;';
     var meta = (r.category || 'overig') + (r.time ? ' - ' + r.time + ' min' : '');
+    var photoHtml = r.photo_url
+      ? '<div class="rph-wrap" onclick="event.stopPropagation();triggerPhotoUpload(\'' + r.id + '\')">' +
+          '<img class="rph" src="' + r.photo_url + '" alt=""/>' +
+          '<button class="rph-edit" title="Foto wijzigen">&#128247;</button>' +
+        '</div>'
+      : '<div class="rph-empty" onclick="event.stopPropagation();triggerPhotoUpload(\'' + r.id + '\')">' +
+          '<span>&#128247;</span>' +
+          '<small>Foto</small>' +
+        '</div>';
     return '<div class="rc" style="animation-delay:' + (i * 0.03) + 's">' +
-      '<span class="re" onclick="showDetail(\'' + r.id + '\')">' + em + '</span>' +
+      photoHtml +
       '<div class="ri" onclick="showDetail(\'' + r.id + '\')">' +
         '<div class="rn">' + r.name + '</div>' +
         '<div class="rm">' + meta + '</div>' +
@@ -779,7 +805,18 @@ function renderDetail(r) {
     '<div class="nv"><div class="nvn">' + r.nutrition.fat + 'g</div><div class="nvl">vet</div></div>'
     : '<div style="grid-column:1/-1;font-size:.8rem;color:var(--tl);text-align:center;padding:.35rem">Klik "Bereken" om op te halen</div>';
 
+  var photoDetHtml = r.photo_url
+    ? '<div class="det-photo-wrap">' +
+        '<img class="det-photo" src="' + r.photo_url + '" alt=""/>' +
+        '<button class="det-photo-edit" onclick="triggerPhotoUpload(\'' + r.id + '\')" title="Foto wijzigen">&#128247;</button>' +
+      '</div>'
+    : '<div class="det-photo-empty" onclick="triggerPhotoUpload(\'' + r.id + '\')">' +
+        '<span>&#128247;</span>' +
+        '<small>Voeg foto toe</small>' +
+      '</div>';
+
   document.getElementById('dbody').innerHTML =
+    photoDetHtml +
     '<div class="dei">' + em + '</div>' +
     '<div class="dtg" id="dtg-' + r.id + '"><span class="tag" style="cursor:pointer" onclick="window._editCatId=\'' + r.id + '\';editCategory()" title="Categorie wijzigen">' + (r.category||'overig') + ' &#9998;</span>' + (r.difficulty ? '<span class="tag" style="background:rgba(232,100,42,.1);color:var(--or)">' + r.difficulty + '</span>' : '') + '</div>' +
     '<div class="dtw"><h2 class="dti" id="dtitl">' + r.name + '</h2><button class="el" onclick="editTitle(\'' + r.id + '\')">bewerken</button></div>' +
@@ -1210,6 +1247,75 @@ function fallbackCopy(text) {
 function openSpotify() {
   window.open('spotify:', '_blank');
   setTimeout(function(){ window.open('https://open.spotify.com', '_blank'); }, 500);
+}
+
+// -- PHOTO UPLOAD ----------------------
+var _photoUploadId = null;
+
+function triggerPhotoUpload(id) {
+  _photoUploadId = id;
+  var inp = document.getElementById('photo-input');
+  if (inp) { inp.value = ''; inp.click(); }
+}
+
+function onPhotoSelected(event) {
+  var file = event.target.files && event.target.files[0];
+  if (!file || !_photoUploadId) return;
+  var id = _photoUploadId;
+  toast('Foto comprimeren...', 'ok');
+  compressPhoto(file, 800, 0.78, function(blob) {
+    uploadPhotoToStorage(id, blob);
+  });
+}
+
+function compressPhoto(file, maxW, quality, cb) {
+  var reader = new FileReader();
+  reader.onload = function(e) {
+    var img = new Image();
+    img.onload = function() {
+      var w = img.width, h = img.height;
+      if (w > maxW) { h = Math.round(h * maxW / w); w = maxW; }
+      var canvas = document.createElement('canvas');
+      canvas.width = w; canvas.height = h;
+      canvas.getContext('2d').drawImage(img, 0, 0, w, h);
+      canvas.toBlob(function(blob) { cb(blob); }, 'image/jpeg', quality);
+    };
+    img.src = e.target.result;
+  };
+  reader.readAsDataURL(file);
+}
+
+function uploadPhotoToStorage(id, blob) {
+  toast('Foto uploaden...', 'ok');
+  var filename = id + '.jpg';
+  fetch(SB_URL + '/storage/v1/object/recipe-photos/' + filename, {
+    method: 'POST',
+    headers: {
+      'apikey': SB_KEY,
+      'Authorization': 'Bearer ' + SB_KEY,
+      'Content-Type': 'image/jpeg',
+      'x-upsert': 'true'
+    },
+    body: blob
+  }).then(function(r) {
+    if (!r.ok) return r.text().then(function(t){ throw new Error(t); });
+    var url = SB_URL + '/storage/v1/object/public/recipe-photos/' + filename + '?t=' + Date.now();
+    patchDB(id, { photo_url: url });
+    toast('Foto opgeslagen!', 'ok');
+    // Refresh current view
+    var r2 = recipes.find(function(x){ return x.id == id; });
+    if (r2) {
+      if (curId == id) { renderDetail(r2); }
+      renderList();
+    }
+  }).catch(function(e) {
+    var msg = e.message || '';
+    if (msg.indexOf('Bucket not found') > -1 || msg.indexOf('bucket') > -1) {
+      toast('Maak eerst bucket "recipe-photos" aan in Supabase Storage', 'er');
+    } else {
+      toast('Upload mislukt: ' + msg.slice(0,60), 'er');
+    }
+  });
 }
 
 // -- WIJNADVIES ------------------------
@@ -1957,5 +2063,6 @@ if ('serviceWorker' in navigator) {
   navigator.serviceWorker.register('/recepten/sw.js').catch(function(){});
 }
 </script>
+<input type="file" id="photo-input" accept="image/*" style="display:none" onchange="onPhotoSelected(event)"/>
 </body>
 </html>
