@@ -1,4 +1,4 @@
-const CACHE = 'cucina-v2';
+const CACHE = 'cucina-v32';
 const SCOPE = '/recepten/';
 const ASSETS = ['/recepten/','/recepten/index.html','/recepten/manifest.json','/recepten/icon-192.png','/recepten/icon-512.png'];
 
@@ -17,7 +17,6 @@ self.addEventListener('activate', e => {
 });
 
 self.addEventListener('fetch', e => {
-  // Only handle requests within our scope
   if (!e.request.url.includes(SCOPE)) return;
   e.respondWith(fetch(e.request).catch(() => caches.match(e.request)));
 });
