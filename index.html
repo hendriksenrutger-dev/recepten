@@ -4,7 +4,7 @@
 <meta charset="UTF-8"/>
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover"/>
 <meta name="theme-color" content="#1A3A5C"/>
-<meta name="version" content="v32"/>
+<meta name="version" content="v33"/>
 <meta name="apple-mobile-web-app-capable" content="yes"/>
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"/>
 <meta name="apple-mobile-web-app-title" content="Cucina"/>
@@ -870,11 +870,25 @@ function saveServings(id) {
 
 function scaleIng(ing, f) {
   if (f === 1) return ing;
-  return ing.replace(/(\d+([.,]\d+)?)/g, function(m) {
+  // Skip numbers followed by temperature or time units
+  var skipPattern = /(\d+([.,]\d+)?)\s*(°C|°F|°|graden|minuten|min\.?|uur|uren|seconden|sec\.?)/gi;
+  // First, temporarily replace protected numbers with placeholders
+  var protected_ = [];
+  var temp = ing.replace(skipPattern, function(m) {
+    protected_.push(m);
+    return '\x00' + (protected_.length - 1) + '\x00';
+  });
+  // Scale remaining numbers
+  temp = temp.replace(/(\d+([.,]\d+)?)/g, function(m) {
     var n = parseFloat(m.replace(',','.'));
     var s = Math.round(n * f * 10) / 10;
     return String(s).replace('.',',');
   });
+  // Restore protected values
+  temp = temp.replace(/\x00(\d+)\x00/g, function(m, i) {
+    return protected_[parseInt(i)];
+  });
+  return temp;
 }
 
 function toggleIngCheck(li) { li.classList.toggle('ck'); }
