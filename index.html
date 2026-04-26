@@ -870,14 +870,18 @@ function saveServings(id) {
 
 function scaleIng(ing, f) {
   if (f === 1) return ing;
-  // Skip numbers followed by temperature or time units
-  var skipPattern = /(\d+([.,]\d+)?)\s*(°C|°F|°|graden|minuten|min\.?|uur|uren|seconden|sec\.?)/gi;
-  // First, temporarily replace protected numbers with placeholders
+  var letters = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
   var protected_ = [];
-  var temp = ing.replace(skipPattern, function(m) {
+  function protect(m) {
     protected_.push(m);
-    return '\x00' + (protected_.length - 1) + '\x00';
-  });
+    return '§PH' + letters[protected_.length - 1] + '§';
+  }
+  // Protect ranges: "8 tot 10 minuten" or "8-10 min"
+  var rangePattern = /(\d+([.,]\d+)?)\s*(tot|à|a|-)\s*(\d+([.,]\d+)?)\s*(°C|°F|°|graden|minuten|min\.?|uur|uren|seconden|sec\.?)/gi;
+  var temp = ing.replace(rangePattern, protect);
+  // Protect single numbers followed by time/temp units
+  var skipPattern = /(\d+([.,]\d+)?)\s*(°C|°F|°|graden|minuten|min\.?|uur|uren|seconden|sec\.?)/gi;
+  temp = temp.replace(skipPattern, protect);
   // Scale remaining numbers
   temp = temp.replace(/(\d+([.,]\d+)?)/g, function(m) {
     var n = parseFloat(m.replace(',','.'));
@@ -885,8 +889,8 @@ function scaleIng(ing, f) {
     return String(s).replace('.',',');
   });
   // Restore protected values
-  temp = temp.replace(/\x00(\d+)\x00/g, function(m, i) {
-    return protected_[parseInt(i)];
+  temp = temp.replace(/§PH([A-Z])§/g, function(m, c) {
+    return protected_[letters.indexOf(c)];
   });
   return temp;
 }
