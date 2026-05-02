@@ -4,7 +4,7 @@
 <meta charset="UTF-8"/>
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover"/>
 <meta name="theme-color" content="#1A3A5C"/>
-<meta name="version" content="v33"/>
+<meta name="version" content="v34"/>
 <meta name="apple-mobile-web-app-capable" content="yes"/>
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"/>
 <meta name="apple-mobile-web-app-title" content="Cucina"/>
@@ -1391,13 +1391,19 @@ function getLekkerMet(id, forceRefresh) {
     method: 'POST',
     headers: { 'Content-Type': 'application/json', 'x-api-key': key, 'anthropic-version': '2023-06-01', 'anthropic-dangerous-direct-browser-access': 'true' },
     body: JSON.stringify({
-      model: 'claude-sonnet-4-6', max_tokens: 400,
-      system: 'Je bent een culinaire expert. Geef concrete bijgerecht- en combinatiesuggesties. Noem specifieke gerechten, sauzen of bijpassende smaken. Schrijf in het Nederlands.',
-      messages: [{ role: 'user', content: 'Wat past lekker bij "' + r.name + '" (ingredienten: ' + (r.ingredients||[]).slice(0,6).join(', ') + ')? Geef 3-4 concrete combinaties of bijgerechten met een korte uitleg waarom ze passen. Beknopt.' }]
+      model: 'claude-sonnet-4-6', max_tokens: 500,
+      system: 'Je bent een culinaire expert. Geef ALLEEN een geldig JSON array terug, geen uitleg, geen markdown. Schrijf in het Nederlands.',
+      messages: [{ role: 'user', content: 'Wat past lekker bij "' + r.name + '" (ingredienten: ' + (r.ingredients||[]).slice(0,6).join(', ') + ')? Geef 4 concrete bijgerechten of combinaties. Retourneer ALLEEN een JSON array: [{"name":"naam van het gerecht","desc":"korte uitleg waarom het past"}]' }]
     })
   }).then(function(r2){ return r2.json(); }).then(function(data) {
     if (data.error) throw new Error(data.error.message);
     var txt = (data.content||[]).map(function(b){ return b.text||''; }).join('').trim();
+    // Try to store as JSON, fallback to plain text
+    try {
+      var cleaned = txt.replace(/```json|```/g, '').trim();
+      JSON.parse(cleaned); // validate
+      txt = cleaned;
+    } catch(e) { /* keep as plain text */ }
     patchDB(id, { lekker_met: txt });
     box.innerHTML = _lekkerBox(txt, id);
   }).catch(function(e){
@@ -1407,13 +1413,78 @@ function getLekkerMet(id, forceRefresh) {
 }
 
 function _lekkerBox(txt, id) {
+  var inner = '';
+  // Try JSON format first
+  try {
+    var items = JSON.parse(txt);
+    if (Array.isArray(items)) {
+      inner = items.map(function(item) {
+        var name = (item.name || '').replace(/'/g, '&#39;');
+        return '<div style="display:flex;align-items:flex-start;justify-content:space-between;gap:.5rem;padding:.5rem 0;border-bottom:1px solid rgba(46,125,50,.1)">' +
+          '<div style="flex:1">' +
+            '<div style="font-size:.86rem;font-weight:600;color:var(--tx)">' + name + '</div>' +
+            '<div style="font-size:.78rem;color:var(--tm);margin-top:.1rem">' + (item.desc || '') + '</div>' +
+          '</div>' +
+          '<div style="display:flex;gap:.3rem;flex-shrink:0;margin-top:.1rem">' +
+            '<button onclick="searchSuggestion(\'' + name + '\')" title="Zoeken op Google" style="background:var(--bp);border:1px solid var(--br);border-radius:6px;padding:.2rem .45rem;font-size:.72rem;cursor:pointer;color:var(--tm)">&#128269;</button>' +
+            '<button onclick="generateFromSuggestion(\'' + name + '\')" title="Genereer recept" style="background:rgba(46,125,50,.1);border:1px solid rgba(46,125,50,.25);border-radius:6px;padding:.2rem .45rem;font-size:.72rem;cursor:pointer;color:#2E7D32">&#10024;</button>' +
+          '</div>' +
+        '</div>';
+      }).join('');
+    }
+  } catch(e) {
+    // Fallback: plain text
+    inner = '<div style="font-size:.88rem;line-height:1.65;color:var(--tx);white-space:pre-wrap">' + txt + '</div>';
+  }
+
   return '<div style="background:rgba(46,125,50,.05);border:1px solid rgba(46,125,50,.2);border-radius:var(--ra);padding:.85rem 1rem;margin-bottom:1rem">' +
-    '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:.6rem">' +
+    '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:.5rem">' +
       '<div style="display:flex;align-items:center;gap:.5rem"><span style="font-size:1.1rem">&#128523;</span><span style="font-family:Playfair Display,serif;font-size:.9rem;font-weight:700;color:#2E7D32">Lekker met</span></div>' +
       '<button onclick="getLekkerMet(\'' + id + '\',true)" style="background:none;border:none;font-size:.72rem;color:#2E7D32;cursor:pointer;text-decoration:underline">&#8635; Nieuw</button>' +
     '</div>' +
-    '<div style="font-size:.88rem;line-height:1.65;color:var(--tx);white-space:pre-wrap">' + txt + '</div>' +
+    inner +
   '</div>';
+}
+
+function searchSuggestion(name) {
+  window.open('https://www.google.com/search?q=' + encodeURIComponent('recept ' + name), '_blank');
+}
+
+function generateFromSuggestion(name) {
+  var key = getAK();
+  if (!key) { toast('Sla eerst een API key op', 'er'); openSettings(); return; }
+  toast('Recept genereren voor ' + name + '...', 'ok');
+  var cuisines = ['Italiaans','Mediterraan','Aziatisch','Frans','Mexicaans','Grieks','Midden-Oosters','Japans','Spaans','Marokkaans','Thais','Portugees'];
+  var rCuisine = cuisines[Math.floor(Math.random() * cuisines.length)];
+  var rSeed = Math.floor(Math.random() * 9999);
+  fetch('https://api.anthropic.com/v1/messages', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', 'x-api-key': key, 'anthropic-version': '2023-06-01', 'anthropic-dangerous-direct-browser-access': 'true' },
+    body: JSON.stringify({
+      model: 'claude-sonnet-4-6', max_tokens: 1500,
+      system: 'Je bent een professionele kok. Schrijf in het Nederlands. Geef ALLEEN een geldig JSON object terug, geen uitleg, geen markdown.',
+      messages: [{ role: 'user', content: 'Maak een volledig recept voor "' + name + '". Inspireer je op de ' + rCuisine + 'e keuken. Seed: ' + rSeed + '. Geef ALLEEN een JSON object terug met velden: name, category (vlees/kip/vis/vegetarisch/pasta/soep/nagerecht/brood/overig), emoji, servings, time, difficulty (Makkelijk/Gemiddeld/Moeilijk), ingredients (array), steps (array).' }]
+    })
+  }).then(function(res){ return res.json(); }).then(function(data) {
+    if (data.error) throw new Error(data.error.message);
+    var txt = (data.content||[]).map(function(b){ return b.text||''; }).join('').trim();
+    var cleaned = txt.replace(/```json|```/g, '').trim();
+    var parsed;
+    try { parsed = JSON.parse(cleaned); } catch(e) {
+      var m = cleaned.match(/\{[\s\S]*\}/);
+      if (!m) throw new Error('Kon geen recept genereren');
+      parsed = JSON.parse(m[0]);
+    }
+    if (parsed.name && !parsed.name.startsWith('✨')) parsed.name = '✨ ' + parsed.name;
+    saveDB(parsed).then(function(saved) {
+      if (!recipes.find(function(r){ return r.id == saved.id; })) recipes.unshift(saved);
+      renderList();
+      toast('"' + parsed.name + '" opgeslagen!', 'ok');
+      showDetail(saved.id);
+    });
+  }).catch(function(e) {
+    toast('Fout: ' + e.message, 'er');
+  });
 }
 
 // -- WHATSAPP SHARE --------------------
