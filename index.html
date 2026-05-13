@@ -4,7 +4,7 @@
 <meta charset="UTF-8"/>
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover"/>
 <meta name="theme-color" content="#1A3A5C"/>
-<meta name="version" content="v34"/>
+<meta name="version" content="v35"/>
 <meta name="apple-mobile-web-app-capable" content="yes"/>
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"/>
 <meta name="apple-mobile-web-app-title" content="Cucina"/>
@@ -267,6 +267,22 @@ textarea{resize:vertical;min-height:88px}
 }
 
 .sw{background:#fff;border-bottom:1px solid #D0DFF0;flex-shrink:0;padding:.6rem .75rem;display:flex;flex-direction:column;gap:.4rem}
+
+/* LOGIN */
+#lg{position:fixed;inset:0;background:var(--bd);display:flex;flex-direction:column;align-items:center;justify-content:center;z-index:9999;padding:2rem}
+.lgb{background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.12);border-radius:16px;padding:2rem 1.5rem;width:100%;max-width:360px}
+.lgt{font-family:'Playfair Display',serif;font-size:1.6rem;color:#fff;text-align:center;margin-bottom:.2rem}
+.lgt span{color:var(--or);font-style:italic}
+.lgst{font-size:.82rem;color:rgba(255,255,255,.5);text-align:center;margin-bottom:1.75rem}
+.lgf{display:flex;flex-direction:column;gap:.75rem}
+.lgf label{font-size:.75rem;color:rgba(255,255,255,.6);text-transform:uppercase;letter-spacing:.06em;margin-bottom:.2rem;display:block}
+.lgf input{width:100%;background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.15);border-radius:8px;padding:.75rem 1rem;color:#fff;font-family:'DM Sans',sans-serif;font-size:.95rem;outline:none;transition:border-color .2s;box-sizing:border-box}
+.lgf input:focus{border-color:var(--or)}
+.lgf input::placeholder{color:rgba(255,255,255,.3)}
+.lgbtn{width:100%;background:var(--or);color:#fff;border:none;border-radius:8px;padding:.85rem;font-family:'DM Sans',sans-serif;font-size:1rem;font-weight:600;cursor:pointer;margin-top:.5rem;transition:background .2s}
+.lgbtn:hover{background:#d4581f}
+.lgbtn:disabled{background:rgba(255,255,255,.2);cursor:not-allowed}
+.lgerr{background:rgba(200,40,40,.15);border:1px solid rgba(200,40,40,.3);border-radius:8px;padding:.6rem .85rem;font-size:.82rem;color:#ff8080;text-align:center}
 .sw-row{width:100%;height:44px;background:#EEF6FD;border:1px solid #D0DFF0;border-radius:8px;padding:0 1rem;display:flex;align-items:center;gap:.65rem;box-sizing:border-box;font-family:'DM Sans',sans-serif;font-size:.88rem;color:#4A6A8A;cursor:pointer;transition:border-color .2s}
 .sw-row:hover,.sw-row:focus-within{border-color:#2E6DA4}
 .sw-row input{border:none;outline:none;background:transparent;flex:1;font-family:'DM Sans',sans-serif;font-size:.88rem;color:#1A3A5C;min-width:0;height:44px;padding:0}
@@ -275,6 +291,26 @@ textarea{resize:vertical;min-height:88px}
 </head>
 <body>
 <div id="app">
+
+<!-- LOGIN -->
+<div id="lg">
+  <div class="lgb">
+    <div class="lgt">Cucina <span>Hendriksen</span></div>
+    <div class="lgst">Log in om door te gaan</div>
+    <div class="lgf">
+      <div>
+        <label>E-mailadres</label>
+        <input type="email" id="lg-email" placeholder="naam@email.nl" autocomplete="email"/>
+      </div>
+      <div>
+        <label>Wachtwoord</label>
+        <input type="password" id="lg-pass" placeholder="••••••••" autocomplete="current-password" onkeydown="if(event.key==='Enter')doLogin()"/>
+      </div>
+      <div id="lg-err" class="lgerr hide"></div>
+      <button class="lgbtn" id="lg-btn" onclick="doLogin()">Inloggen</button>
+    </div>
+  </div>
+</div>
 
 <!-- SPLASH -->
 <div id="sp" class="scr">
@@ -546,7 +582,13 @@ textarea{resize:vertical;min-height:88px}
         </div>
       </div>
     </div>
-    <div class="mf"><button class="bs2" onclick="closeMod('mset')">Annuleren</button><button class="bp2" onclick="saveSettings()">Opslaan</button></div>
+    <div class="mf">
+      <button class="bs2" onclick="closeMod('mset')">Annuleren</button>
+      <button class="bp2" onclick="saveSettings()">Opslaan</button>
+    </div>
+    <div style="padding:.75rem 1.25rem 1rem;border-top:1px solid var(--br)">
+      <button onclick="doLogout()" style="width:100%;background:none;border:1px solid rgba(200,40,40,.3);border-radius:8px;padding:.6rem;font-size:.85rem;color:#C62828;cursor:pointer;font-family:'DM Sans',sans-serif">&#x2192; Uitloggen</button>
+    </div>
   </div>
 </div>
 
@@ -556,10 +598,27 @@ textarea{resize:vertical;min-height:88px}
 <input type="file" id="pf-doc" accept=".pdf,application/pdf" style="display:none"/>
 
 <script>
+/*
+  SQL voor RLS na het toevoegen van login (uitvoeren in Supabase SQL Editor):
+
+  -- Verwijder de oude open policy
+  DROP POLICY IF EXISTS "Iedereen kan alles" ON recipes;
+
+  -- Alleen ingelogde gebruikers mogen alles
+  CREATE POLICY "Authenticated users can do everything"
+    ON recipes FOR ALL
+    TO authenticated
+    USING (true)
+    WITH CHECK (true);
+*/
+
 var SB_URL = 'https://kegpsbtlfnqxrwiaeovc.supabase.co';
 var SB_KEY = 'sb_publishable_4afcXICjvnZHcjxruVoMRA_PKFBp1hp';
 var AK = 'cucina_anthropic_key';
 var SK = 'cucina_shopping';
+var SESSION_KEY = 'cucina_session';
+
+var _authToken = null; // JWT access token after login
 
 var recipes = [];
 var filter = 'alle';
@@ -577,8 +636,9 @@ var timerSecs = 0;
 // -- SUPABASE --------------------------
 function sbf(path, o) {
   o = o || {};
+  var token = _authToken || SB_KEY;
   return fetch(SB_URL + path, Object.assign({}, o, {
-    headers: Object.assign({ 'apikey': SB_KEY, 'Authorization': 'Bearer ' + SB_KEY, 'Content-Type': 'application/json', 'Prefer': o.prefer || '' }, o.headers || {})
+    headers: Object.assign({ 'apikey': SB_KEY, 'Authorization': 'Bearer ' + token, 'Content-Type': 'application/json', 'Prefer': o.prefer || '' }, o.headers || {})
   })).then(function(r) {
     return r.text().then(function(t) {
       if (!r.ok) throw new Error(t);
@@ -2130,8 +2190,121 @@ function showQR() {
   }
 })();
 
-loadRecipes();
-checkMigration();
+// -- AUTH --------------------------------
+function doLogin() {
+  var email = document.getElementById('lg-email').value.trim();
+  var pass = document.getElementById('lg-pass').value;
+  var btn = document.getElementById('lg-btn');
+  var err = document.getElementById('lg-err');
+  if (!email || !pass) { showAuthErr('Vul e-mail en wachtwoord in'); return; }
+  btn.disabled = true;
+  btn.textContent = 'Bezig...';
+  err.classList.add('hide');
+  fetch(SB_URL + '/auth/v1/token?grant_type=password', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', 'apikey': SB_KEY },
+    body: JSON.stringify({ email: email, password: pass })
+  }).then(function(r) { return r.json(); }).then(function(data) {
+    if (data.error || data.error_description || !data.access_token) {
+      throw new Error(data.error_description || data.msg || 'Inloggen mislukt');
+    }
+    _authToken = data.access_token;
+    var session = {
+      access_token: data.access_token,
+      refresh_token: data.refresh_token,
+      expires_at: Date.now() + (data.expires_in * 1000)
+    };
+    localStorage.setItem(SESSION_KEY, JSON.stringify(session));
+    document.getElementById('lg').style.display = 'none';
+    loadRecipes();
+    checkMigration();
+  }).catch(function(e) {
+    showAuthErr(e.message);
+  }).finally(function() {
+    btn.disabled = false;
+    btn.textContent = 'Inloggen';
+  });
+}
+
+function showAuthErr(msg) {
+  var err = document.getElementById('lg-err');
+  err.textContent = msg;
+  err.classList.remove('hide');
+}
+
+function doLogout() {
+  if (!confirm('Wil je uitloggen?')) return;
+  var token = _authToken;
+  _authToken = null;
+  localStorage.removeItem(SESSION_KEY);
+  if (token) {
+    fetch(SB_URL + '/auth/v1/logout', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'apikey': SB_KEY, 'Authorization': 'Bearer ' + token }
+    }).catch(function(){});
+  }
+  closeMod('mset');
+  // Show login screen
+  document.getElementById('lg').style.display = 'flex';
+  document.getElementById('lg-email').value = '';
+  document.getElementById('lg-pass').value = '';
+  document.getElementById('lg-err').classList.add('hide');
+  // Hide all screens
+  ['mn','dt','sh','ck','sp'].forEach(function(id) {
+    var el = document.getElementById(id);
+    if (el) el.classList.add('hide');
+  });
+}
+
+function checkSession() {
+  try {
+    var raw = localStorage.getItem(SESSION_KEY);
+    if (!raw) { showLogin(); return; }
+    var session = JSON.parse(raw);
+    // Check if token is still valid (with 60s buffer)
+    if (session.access_token && session.expires_at > Date.now() + 60000) {
+      _authToken = session.access_token;
+      document.getElementById('lg').style.display = 'none';
+      loadRecipes();
+      checkMigration();
+      return;
+    }
+    // Try refresh token
+    if (session.refresh_token) {
+      fetch(SB_URL + '/auth/v1/token?grant_type=refresh_token', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'apikey': SB_KEY },
+        body: JSON.stringify({ refresh_token: session.refresh_token })
+      }).then(function(r) { return r.json(); }).then(function(data) {
+        if (data.access_token) {
+          _authToken = data.access_token;
+          var newSession = {
+            access_token: data.access_token,
+            refresh_token: data.refresh_token || session.refresh_token,
+            expires_at: Date.now() + (data.expires_in * 1000)
+          };
+          localStorage.setItem(SESSION_KEY, JSON.stringify(newSession));
+          document.getElementById('lg').style.display = 'none';
+          loadRecipes();
+          checkMigration();
+        } else {
+          showLogin();
+        }
+      }).catch(function() { showLogin(); });
+    } else {
+      showLogin();
+    }
+  } catch(e) { showLogin(); }
+}
+
+function showLogin() {
+  localStorage.removeItem(SESSION_KEY);
+  _authToken = null;
+  document.getElementById('lg').style.display = 'flex';
+}
+
+// Start with session check
+checkSession();
 
 document.getElementById('pf-cam').addEventListener('change', function(){ handlePhoto(this); });
 document.getElementById('pf-gal').addEventListener('change', function(){ handlePhoto(this); });
