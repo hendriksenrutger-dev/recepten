@@ -4,7 +4,7 @@
 <meta charset="UTF-8"/>
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover"/>
 <meta name="theme-color" content="#1A3A5C"/>
-<meta name="version" content="v35"/>
+<meta name="version" content="v36"/>
 <meta name="apple-mobile-web-app-capable" content="yes"/>
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"/>
 <meta name="apple-mobile-web-app-title" content="Cucina"/>
@@ -1926,10 +1926,6 @@ function runGenerator() {
   statusTxt.textContent = 'Recept bedenken...';
   result.innerHTML = '';
 
-  var cuisines = ['Italiaans','Mediterraan','Aziatisch','Frans','Mexicaans','Grieks','Midden-Oosters','Japans','Spaans','Marokkaans','Thais','Portugees'];
-  var techniques = ['gegaard','geroosterd','gestoofd','gegrild','gebakken','gepokt','gebakken in de oven','gefrituurd','gekookt'];
-  var rCuisine = cuisines[Math.floor(Math.random() * cuisines.length)];
-  var rTech = techniques[Math.floor(Math.random() * techniques.length)];
   var rSeed = Math.floor(Math.random() * 9999);
 
   fetch('https://api.anthropic.com/v1/messages', {
@@ -1937,8 +1933,8 @@ function runGenerator() {
     headers: { 'Content-Type': 'application/json', 'x-api-key': key, 'anthropic-version': '2023-06-01', 'anthropic-dangerous-direct-browser-access': 'true' },
     body: JSON.stringify({
       model: 'claude-sonnet-4-6', max_tokens: 1500,
-      system: 'Je bent een professionele kok met kennis van wereldkeukens. Bedenk serieuze, bestaande of kloppende recepten. Geen fantasy gerechten. Schrijf in het Nederlands. Geef ALLEEN een geldig JSON object terug, geen uitleg. Varieer altijd — kies nooit het meest voor de hand liggende gerecht.',
-      messages: [{ role: 'user', content: 'Bedenk een lekker, origineel recept met: ' + input + '. Inspireer je op de ' + rCuisine + 'e keuken of bereidingswijze "' + rTech + '". Seed: ' + rSeed + '. Geef ALLEEN een JSON object terug met velden: name, category (vlees/kip/vis/vegetarisch/pasta/soep/nagerecht/brood/overig), emoji, servings, time, difficulty (Makkelijk/Gemiddeld/Moeilijk), ingredients (array), steps (array).' }]
+      system: 'Je bent een professionele kok. Je prioriteit is altijd een bestaand, beproefd gerecht te kiezen dat past bij de opgegeven ingrediënten. Kies het meest logische en smakelijke gerecht dat mensen kennen. Wees alleen creatief als er geen goed bestaand gerecht past. Geen fusion tenzij het een erkende wereldkeuken is. Alle ingrediënten moeten culinair bij elkaar passen. Schrijf in het Nederlands. Geef ALLEEN een geldig JSON object terug, geen uitleg.',
+      messages: [{ role: 'user', content: 'Welk bestaand, lekker gerecht past het best bij deze ingrediënten: ' + input + '? Seed: ' + rSeed + '. Kies een klassiek of bekend gerecht uit een echte keuken. Geef ALLEEN een JSON object terug met velden: name, category (vlees/kip/vis/vegetarisch/pasta/soep/nagerecht/brood/overig), emoji, servings, time, difficulty (Makkelijk/Gemiddeld/Moeilijk), ingredients (array), steps (array).' }]
     })
   }).then(function(r){ return r.json(); }).then(function(data) {
     if (data.error) throw new Error(data.error.message);
