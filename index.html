@@ -4,7 +4,7 @@
 <meta charset="UTF-8"/>
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover"/>
 <meta name="theme-color" content="#1A3A5C"/>
-<meta name="version" content="v37"/>
+<meta name="version" content="v38"/>
 <meta name="apple-mobile-web-app-capable" content="yes"/>
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"/>
 <meta name="apple-mobile-web-app-title" content="Cucina"/>
@@ -2047,8 +2047,8 @@ function _sendGenChat() {
   msgs.scrollTop = msgs.scrollHeight;
 
   var r = window._genRecipe;
-  var ctx = 'Recept: ' + r.name + '. Ingredienten: ' + (r.ingredients||[]).join(', ') + '. Bereiding: ' + (r.steps||[]).join(' ');
-  var systemMsg = 'Je bent een kookassistent. Beantwoord vragen over dit recept kort en in het Nederlands. Als de gebruiker iets wil aanpassen, beschrijf dan kort de aanpassing en sluit af met het woord RECEPTUPDATE gevolgd door een geldig JSON object met de gewijzigde velden (name, servings, ingredients, steps mogen worden gewijzigd; stuur altijd servings mee als het personen-aantal wijzigt). Geen andere tekst na het JSON object.';
+  var ctx = 'Recept: ' + r.name + '. Personen: ' + (r.servings||4) + '. Ingredienten (volledig met hoeveelheden): ' + (r.ingredients||[]).join(' | ') + '. Bereiding: ' + (r.steps||[]).join(' ');
+  var systemMsg = 'Je bent een kookassistent. Beantwoord vragen over dit recept kort en in het Nederlands. Als de gebruiker iets wil aanpassen, beschrijf dan kort de aanpassing en sluit af met het woord RECEPTUPDATE gevolgd door een geldig JSON object. BELANGRIJK: stuur altijd de VOLLEDIGE ingrediëntenlijst terug met exacte hoeveelheden en eenheden — nooit vereenvoudigd of zonder hoeveelheden. Stuur ook altijd de volledige stappen terug. Gewijzigde velden: name, servings, ingredients (volledige lijst met hoeveelheden!), steps (volledige lijst). Geen andere tekst na het JSON object.';
   var messages = [{ role: 'user', content: 'Huidig recept: ' + ctx }].concat(_genChatHistory);
 
   fetch('https://api.anthropic.com/v1/messages', {
