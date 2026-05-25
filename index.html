@@ -4,7 +4,7 @@
 <meta charset="UTF-8"/>
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover"/>
 <meta name="theme-color" content="#1A3A5C"/>
-<meta name="version" content="v38"/>
+<meta name="version" content="v39"/>
 <meta name="apple-mobile-web-app-capable" content="yes"/>
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"/>
 <meta name="apple-mobile-web-app-title" content="Cucina"/>
@@ -1038,7 +1038,7 @@ function calcNutr(id) {
   if (!key) { toast('Sla eerst een API key op', 'er'); openSettings(); return; }
   var box = document.getElementById('ng' + id);
   box.innerHTML = '<div style="grid-column:1/-1;text-align:center;padding:.4rem"><div class="sp2" style="margin:0 auto"></div></div>';
-  var prompt = 'Gerecht: ' + r.name + '. Ingredienten: ' + r.ingredients.slice(0,10).join(', ') + '. Geef de geschatte voedingswaarden per 100g van dit bereide gerecht als JSON. Antwoord met ALLEEN dit object, geen tekst ervoor of erna: {"kcal":0,"protein":0,"carbs":0,"fat":0}';
+  var prompt = 'Gerecht: ' + r.name + '. Ingredienten (drooggewicht zoals in recept): ' + r.ingredients.slice(0,10).join(', ') + '. Bereken de voedingswaarden per 100g van het BEREIDE gerecht. Houd rekening met kookfactoren: droge pasta en rijst worden 2,5x zwaarder na koken, peulvruchten 2x, andere ingredienten blijven gelijk. Bereken het totale bereide gewicht en deel de totale voedingswaarden daardoor. Antwoord met ALLEEN dit object, geen tekst ervoor of erna: {"kcal":0,"protein":0,"carbs":0,"fat":0}';
   fetch('https://api.anthropic.com/v1/messages', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json', 'x-api-key': key, 'anthropic-version': '2023-06-01', 'anthropic-dangerous-direct-browser-access': 'true' },
