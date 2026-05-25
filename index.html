@@ -4,7 +4,7 @@
 <meta charset="UTF-8"/>
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover"/>
 <meta name="theme-color" content="#1A3A5C"/>
-<meta name="version" content="v44"/>
+<meta name="version" content="v45"/>
 <meta name="apple-mobile-web-app-capable" content="yes"/>
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"/>
 <meta name="apple-mobile-web-app-title" content="Cucina"/>
@@ -1043,7 +1043,7 @@ function calcNutr(id) {
     method: 'POST',
     headers: { 'Content-Type': 'application/json', 'x-api-key': key, 'anthropic-version': '2023-06-01', 'anthropic-dangerous-direct-browser-access': 'true' },
     body: JSON.stringify({
-      model: 'claude-sonnet-4-6', max_tokens: 250,
+      model: 'claude-haiku-4-5-20251001', max_tokens: 250,
       system: 'Je bent een voedingsdeskundige. Reageer UITSLUITEND met een geldig JSON object in exact dit formaat, zonder enige andere tekst, uitleg of markdown: {"kcal":number,"protein":number,"carbs":number,"fat":number}. Geen inleiding, geen afsluiting, alleen het JSON object.',
       messages: [{ role: 'user', content: prompt }]
     })
