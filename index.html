@@ -4,7 +4,7 @@
 <meta charset="UTF-8"/>
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover"/>
 <meta name="theme-color" content="#1A3A5C"/>
-<meta name="version" content="v42"/>
+<meta name="version" content="v43"/>
 <meta name="apple-mobile-web-app-capable" content="yes"/>
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"/>
 <meta name="apple-mobile-web-app-title" content="Cucina"/>
@@ -1045,12 +1045,15 @@ function calcNutr(id) {
     body: JSON.stringify({
       model: 'claude-sonnet-4-6', max_tokens: 250,
       system: 'Je bent een voedingsdeskundige. Reageer UITSLUITEND met een geldig JSON object in exact dit formaat, zonder enige andere tekst, uitleg of markdown: {"kcal":number,"protein":number,"carbs":number,"fat":number}. Geen inleiding, geen afsluiting, alleen het JSON object.',
-      messages: [{ role: 'user', content: prompt }]
+      messages: [
+        { role: 'user', content: prompt },
+        { role: 'assistant', content: '{' }
+      ]
     })
   }).then(function(r2){ return r2.json(); }).then(function(data) {
     if (data.error) throw new Error('API fout: ' + (data.error.message || JSON.stringify(data.error)));
     if (!data.content) throw new Error('Lege response: ' + JSON.stringify(data));
-    var text = data.content.map(function(b){ return b.text || ''; }).join('').trim();
+    var text = '{' + data.content.map(function(b){ return b.text || ''; }).join('').trim();
     var cleaned = text.replace(/```json|```/g, '').trim();
     var nutr;
     try { nutr = JSON.parse(cleaned); } catch(e) {

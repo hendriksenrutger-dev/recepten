@@ -1,4 +1,4 @@
-const CACHE = 'cucina-v42';
+const CACHE = 'cucina-v43';
 const SCOPE = '/recepten/';
 const ASSETS = ['/recepten/','/recepten/index.html','/recepten/manifest.json','/recepten/icon-192.png','/recepten/icon-512.png'];
 
