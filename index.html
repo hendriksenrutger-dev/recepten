@@ -4,7 +4,7 @@
 <meta charset="UTF-8"/>
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover"/>
 <meta name="theme-color" content="#1A3A5C"/>
-<meta name="version" content="v45"/>
+<meta name="version" content="v46"/>
 <meta name="apple-mobile-web-app-capable" content="yes"/>
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"/>
 <meta name="apple-mobile-web-app-title" content="Cucina"/>
@@ -246,6 +246,11 @@ textarea{resize:vertical;min-height:88px}
 .fr{display:grid;grid-template-columns:1fr 1fr;gap:.65rem}
 .bp2{background:var(--bd);color:var(--wh);border:none;padding:.75rem 1.25rem;border-radius:8px;font-family:'DM Sans',sans-serif;font-size:.88rem;font-weight:600;cursor:pointer;transition:background .2s;display:flex;align-items:center;gap:.4rem}
 .bp2:hover{background:var(--or)}.bp2:disabled{opacity:.5;cursor:not-allowed}
+.wt-rij{display:flex;align-items:center;gap:.75rem;width:100%;min-height:48px;padding:.55rem .25rem;background:none;border:none;border-bottom:1px solid var(--br);font-family:'DM Sans',sans-serif;font-size:.92rem;color:var(--tx);text-align:left;cursor:pointer}
+.wt-rij:last-child{border-bottom:none}
+.wt-vak{width:22px;height:22px;border-radius:6px;border:2px solid var(--bd);background:var(--bd);color:var(--wh);display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.wt-rij.uit{color:var(--tl);text-decoration:line-through}
+.wt-rij.uit .wt-vak{background:none;border-color:var(--br);color:transparent}
 .bs2{background:var(--bp);color:var(--tx);border:1px solid var(--br);padding:.75rem 1.1rem;border-radius:8px;font-family:'DM Sans',sans-serif;font-size:.88rem;cursor:pointer}
 .ai{background:rgba(46,109,164,.08);border:1px solid rgba(46,109,164,.2);border-radius:8px;padding:.65rem .85rem;font-size:.83rem;color:var(--bm);display:flex;align-items:center;gap:.5rem}
 .ai.hide{display:none}
@@ -426,25 +431,6 @@ textarea{resize:vertical;min-height:88px}
   <div class="db" id="dbody"></div>
 </div>
 
-<!-- SHOPPING -->
-<div id="sh" class="hide">
-  <div class="ts"></div>
-  <div class="shh">
-    <button class="bb" onclick="showMain()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 12H5M12 5l-7 7 7 7"/></svg></button>
-    <div class="ml" style="flex:1;text-align:center">Boodschappen <span>Lijst</span></div>
-    <button onclick="clearShopping()" style="background:none;border:none;color:rgba(255,255,255,.6);font-size:.78rem;cursor:pointer">Wis alles</button>
-  </div>
-  <div class="shb" id="shlist"></div>
-  <div class="sh-actions">
-    <button class="sh-wa" onclick="shareShoppingWA()" style="flex:1">
-      <svg viewBox="0 0 24 24" fill="currentColor" width="17" height="17"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347z"/><path d="M12 0C5.373 0 0 5.373 0 12c0 2.136.564 4.14 1.542 5.877L.057 23.893l6.197-1.458A11.955 11.955 0 0 0 12 24c6.627 0 12-5.373 12-12S18.627 0 12 0zm0 21.818a9.818 9.818 0 0 1-5.032-1.388l-.36-.214-3.733.879.936-3.618-.236-.373A9.818 9.818 0 1 1 12 21.818z"/></svg>
-      Deel via WhatsApp
-    </button>
-    <button class="sh-cl" onclick="showQR()" style="background:var(--bd);color:white;border-color:var(--bd)">&#128247; QR</button>
-    <button class="sh-cl" onclick="clearShopping()">Wis</button>
-  </div>
-</div>
-
 <!-- COOK MODE -->
 <div id="ck" class="hide">
   <div class="ts"></div>
@@ -550,16 +536,16 @@ textarea{resize:vertical;min-height:88px}
   </div>
 </div>
 
-<!-- MODAL: QR CODE -->
-<div class="ov hide" id="mqr">
+<!-- MODAL: RECEPT OP BOODSCHAPPENLIJST -->
+<div class="ov hide" id="mwt">
   <div class="mo">
     <div class="moh"></div>
-    <div class="mhd"><span class="mht">Scan met telefoon</span><button class="mc" onclick="closeMod('mqr')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6 6 18M6 6l12 12"/></svg></button></div>
-    <div class="mb" style="align-items:center;text-align:center">
-      <p style="font-size:.85rem;color:var(--tm);margin-bottom:.75rem">Scan met je telefoon om de boodschappenlijst te importeren in Cucina.</p>
-      <div id="qr-container" style="min-height:220px;display:flex;align-items:center;justify-content:center"></div>
+    <div class="mhd"><span class="mht" id="wt-titel">Op boodschappenlijst</span><button class="mc" onclick="closeMod('mwt')" aria-label="Sluiten"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6 6 18M6 6l12 12"/></svg></button></div>
+    <div class="mb">
+      <p style="font-size:.85rem;color:var(--tm);margin:0 0 .6rem">Tik weg wat je al in huis hebt.</p>
+      <div id="wt-lijst"></div>
     </div>
-    <div class="mf"><button class="bs2" onclick="closeMod('mqr')">Sluiten</button></div>
+    <div class="mf"><button class="bs2" onclick="closeMod('mwt')">Annuleren</button><button class="bp2" id="wt-knop" onclick="wtOpslaan()">Op de lijst</button></div>
   </div>
 </div>
 
@@ -626,7 +612,7 @@ var fabOpen = false;
 var curId = null;
 var curSrv = 4;
 var baseSrv = 4;
-var shopping = JSON.parse(localStorage.getItem(SK) || '[]');
+try { localStorage.removeItem(SK); } catch(e) {}   // oude lokale lijst (v45 en eerder)
 var wakeLock = null;
 var cookStepIdx = 0;
 var cookRecipe = null;
@@ -786,7 +772,7 @@ function setDbStatus(ok) {
 
 // -- SCREENS ---------------------------
 function showMain() {
-  ['sp','dt','sh','ck'].forEach(function(id){ hide(id); });
+  ['sp','dt','ck'].forEach(function(id){ hide(id); });
   show('mn');
   stopWakeLock();
   stopTimer();
@@ -795,7 +781,7 @@ function showDetail(id) {
   curId = id;
   var r = recipes.find(function(x){ return x.id == id; });
   if (!r) return;
-  hide('mn'); hide('sh');
+  hide('mn');
   show('dt');
   document.getElementById('dht').textContent = r.name;
   baseSrv = r.servings || 4;
@@ -803,9 +789,7 @@ function showDetail(id) {
   renderDetail(r);
 }
 function showShopping() {
-  hide('mn');
-  show('sh');
-  renderShopping();
+  window.open(BOODSCHAPPEN_URL, '_blank');
 }
 function show(id){ document.getElementById(id).classList.remove('hide'); }
 function hide(id){ document.getElementById(id).classList.add('hide'); }
@@ -1239,88 +1223,117 @@ function stripIng(ing) {
   return ing.replace(/^[\d,.\-\/]+\s*(theel?|tl|eetl?|el|snuf|snufje|scheutje?|scheut|handje|teen|teentje|blaadje|takje|mespunt)\s+/gi,'').trim();
 }
 
+var BOODSCHAPPEN_URL = 'https://hendriksenrutger-dev.github.io/boodschappen/';
+var _wt = null;   // { recept_id, recept_naam, items: [{orig, aan}] }
+
 function addToShopping(id) {
   var r = recipes.find(function(x){ return x.id == id; });
-  if (!r || !r.ingredients || !r.ingredients.length) return;
+  if (!r || !r.ingredients || !r.ingredients.length) { toast('Geen ingredienten', 'er'); return; }
   var f = (id == curId && baseSrv) ? curSrv / baseSrv : 1;
-  var items = r.ingredients.map(function(ing) {
-    var scaled = scaleIng(ing, f);
-    return { orig: scaled, stripped: stripIng(scaled), recipe: r.name + (f !== 1 ? ' (×' + Math.round(f*10)/10 + ')' : ''), checked: false, id: Date.now() + Math.random() };
-  });
-  shopping = shopping.concat(items);
-  localStorage.setItem(SK, JSON.stringify(shopping));
-  toast(r.ingredients.length + ' ingredienten toegevoegd' + (f !== 1 ? ' (geschaald)' : ''), 'ok');
+  var naam = r.name + (f !== 1 ? ' (×' + Math.round(f*10)/10 + ')' : '');
+  openWegtik(String(r.id), naam, r.ingredients.map(function(ing){ return scaleIng(ing, f); }));
 }
 
-function renderShopping() {
-  var list = document.getElementById('shlist');
-  if (!shopping.length) {
-    list.innerHTML = '<div class="she"><div class="shei">&#128722;</div><p>Nog geen boodschappen.<br>Voeg ingredienten toe vanuit een recept.</p></div>';
-    return;
-  }
-  var byRecipe = {};
-  shopping.forEach(function(item) {
-    if (!byRecipe[item.recipe]) byRecipe[item.recipe] = [];
-    byRecipe[item.recipe].push(item);
-  });
-  list.innerHTML = Object.keys(byRecipe).map(function(recipe) {
-    return '<div class="shs">' + recipe + '</div>' +
-      byRecipe[recipe].map(function(item) {
-        return '<div class="shi ' + (item.checked ? 'ck' : '') + '" style="position:relative" onclick="toggleShop(\'' + item.id + '\')">' +
-          '<div class="shc"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg></div>' +
-          '<span class="sht" style="flex:1">' + item.orig + '</span>' +
-          '<button onclick="event.stopPropagation();removeFromShopping(\'' + item.id + '\')" style="background:none;border:none;color:var(--tl);cursor:pointer;padding:0 .25rem;font-size:1rem;line-height:1;flex-shrink:0" title="Verwijderen">&times;</button>' +
-        '</div>';
-      }).join('');
+function openWegtik(receptId, receptNaam, ingredienten) {
+  _wt = { recept_id: receptId, recept_naam: receptNaam, items: ingredienten.map(function(t){ return { orig: String(t), aan: true }; }) };
+  document.getElementById('wt-titel').textContent = receptNaam;
+  renderWegtik();
+  openMod('mwt');
+}
+
+function renderWegtik() {
+  if (!_wt) return;
+  var vink = '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>';
+  document.getElementById('wt-lijst').innerHTML = _wt.items.map(function(it, n) {
+    var t = String(it.orig).replace(/[&<>"]/g, function(c){ return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]; });
+    return '<button class="wt-rij' + (it.aan ? '' : ' uit') + '" onclick="wtWissel(' + n + ')" aria-pressed="' + it.aan + '"><span class="wt-vak">' + vink + '</span><span>' + t + '</span></button>';
   }).join('');
+  var aantal = _wt.items.filter(function(i){ return i.aan; }).length;
+  var knop = document.getElementById('wt-knop');
+  knop.textContent = aantal === 1 ? '1 item op de lijst' : aantal + ' items op de lijst';
+  knop.disabled = aantal === 0;
 }
 
-function toggleShop(id) {
-  var item = shopping.find(function(i){ return String(i.id) === String(id); });
-  if (item) { item.checked = !item.checked; localStorage.setItem(SK, JSON.stringify(shopping)); renderShopping(); }
+function wtWissel(n) {
+  if (!_wt || !_wt.items[n]) return;
+  _wt.items[n].aan = !_wt.items[n].aan;
+  renderWegtik();
 }
 
-function removeFromShopping(id) {
-  shopping = shopping.filter(function(i){ return String(i.id) !== String(id); });
-  localStorage.setItem(SK, JSON.stringify(shopping));
-  renderShopping();
+// "400 g spaghetti" -> { hoeveelheid: '400', eenheid: 'g', naam: 'Spaghetti' }
+var _EENHEDEN = 'kilogram|kilo|kg|gram|gr|g|milliliter|ml|centiliter|cl|deciliter|dl|liter|l|eetlepels|eetlepel|eetl|el|theelepels|theelepel|theel|tl|stuks|stuk|st|blikjes|blikje|blikken|blik|pakjes|pakje|pakken|pak|potjes|potje|potten|pot|zakjes|zakje|zakken|zak|flesjes|flesje|flessen|fles|bosjes|bosje|bossen|bos|teentjes|teentje|tenen|teen|takjes|takje|snufjes|snufje|snuf|mespuntjes|mespuntje|mespunt|handjes|handje|handvol|plakjes|plakje|plakken|plak|blaadjes|blaadje|scheutjes|scheutje|scheut|kopjes|kopje|kop|bekers|beker|bekertje|kuipjes|kuipje|stengels|stengel|stronkjes|stronkje|stronk|bollen|bol|trosjes|tros';
+var _ING_RE = new RegExp('^\\s*((?:\\d+(?:[.,]\\d+)?|½|¼|¾)(?:\\s*(?:\\/|-|–|tot)\\s*\\d+(?:[.,]\\d+)?)?)\\s*(?:(' + _EENHEDEN + ')\\.?(?=\\s))?\\s*(.+)$', 'i');
+function ontleedIngredient(tekst) {
+  var t = String(tekst).trim();
+  var uit = { naam: t, hoeveelheid: null, eenheid: null, notitie: null };
+  var m = t.match(_ING_RE);
+  if (m) {
+    uit.hoeveelheid = m[1].replace(/\s+/g, '').replace(',', '.').replace('½', '0.5').replace('¼', '0.25').replace('¾', '0.75');
+    uit.eenheid = m[2] ? m[2].toLowerCase() : null;
+    uit.naam = m[3].trim();
+  }
+  var haak = uit.naam.match(/\(([^)]*)\)/);
+  if (haak) { uit.notitie = haak[1].trim(); uit.naam = uit.naam.replace(haak[0], '').replace(/\s{2,}/g, ' ').trim(); }
+  var komma = uit.naam.indexOf(',');
+  if (komma > 0) {
+    var rest = uit.naam.slice(komma + 1).trim();
+    uit.naam = uit.naam.slice(0, komma).trim();
+    if (rest) uit.notitie = uit.notitie ? rest + ', ' + uit.notitie : rest;
+  }
+  if (!uit.naam) uit.naam = t;
+  uit.naam = uit.naam.charAt(0).toUpperCase() + uit.naam.slice(1);
+  return uit;
 }
 
-function clearShopping() {
-  if (!confirm('Boodschappenlijst leegmaken?')) return;
-  shopping = [];
-  localStorage.setItem(SK, JSON.stringify(shopping));
-  renderShopping();
-  toast('Lijst geleegd', 'ok');
+// Geldige token voor Supabase; ververst zo nodig (sessie wordt gedeeld met de boodschappen-app)
+function verseToken() {
+  var s = null;
+  try { s = JSON.parse(localStorage.getItem(SESSION_KEY) || 'null'); } catch(e) {}
+  if (!s || !s.access_token) return Promise.resolve(_authToken);
+  var exp = s.expires_at > 1e11 ? s.expires_at : s.expires_at * 1000;
+  if (exp > Date.now() + 60000 || !s.refresh_token) { _authToken = s.access_token; return Promise.resolve(s.access_token); }
+  return fetch(SB_URL + '/auth/v1/token?grant_type=refresh_token', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', 'apikey': SB_KEY },
+    body: JSON.stringify({ refresh_token: s.refresh_token })
+  }).then(function(r){ return r.json(); }).then(function(data) {
+    if (!data.access_token) return s.access_token;
+    _authToken = data.access_token;
+    localStorage.setItem(SESSION_KEY, JSON.stringify({
+      access_token: data.access_token,
+      refresh_token: data.refresh_token || s.refresh_token,
+      expires_at: Date.now() + (data.expires_in * 1000)
+    }));
+    return data.access_token;
+  }).catch(function(){ return s.access_token; });
 }
 
-function shareShoppingWA() {
-  var unchecked = shopping.filter(function(i){ return !i.checked; });
-  if (!unchecked.length) { toast('Geen items', 'er'); return; }
-  var byRecipe = {};
-  unchecked.forEach(function(i){ if (!byRecipe[i.recipe]) byRecipe[i.recipe] = []; byRecipe[i.recipe].push(i.orig); });
-  var msg = 'Boodschappenlijst:\n\n' + Object.keys(byRecipe).map(function(r){ return r + ':\n' + byRecipe[r].map(function(i){ return '- ' + i; }).join('\n'); }).join('\n\n');
-  window.open('https://wa.me/?text=' + encodeURIComponent(msg), '_blank');
-}
-
-function copyToAH() {
-  var unchecked = shopping.filter(function(i){ return !i.checked; });
-  if (!unchecked.length) { toast('Geen items', 'er'); return; }
-  var text = unchecked.map(function(i){ return i.stripped || i.orig; }).join('\n');
-  if (navigator.clipboard) {
-    navigator.clipboard.writeText(text).then(function() {
-      toast('Gekopieerd! Plak in de AH app onder Mijn lijst', 'ok');
-    }).catch(function() { fallbackCopy(text); });
-  } else { fallbackCopy(text); }
-}
-
-function fallbackCopy(text) {
-  var ta = document.createElement('textarea');
-  ta.value = text; ta.style.position = 'fixed'; ta.style.opacity = '0';
-  document.body.appendChild(ta); ta.select();
-  document.execCommand('copy');
-  document.body.removeChild(ta);
-  toast('Gekopieerd! Plak in de AH app onder Mijn lijst', 'ok');
+function wtOpslaan() {
+  if (!_wt) return;
+  var gekozen = _wt.items.filter(function(i){ return i.aan; });
+  if (!gekozen.length) return;
+  var rijen = gekozen.map(function(i) {
+    var o = ontleedIngredient(i.orig);
+    return { naam: o.naam, hoeveelheid: o.hoeveelheid, eenheid: o.eenheid, notitie: o.notitie, bron: 'recept', recept_id: _wt.recept_id, recept_naam: _wt.recept_naam };
+  });
+  var knop = document.getElementById('wt-knop');
+  knop.disabled = true; knop.textContent = 'Bezig...';
+  verseToken().then(function(tk) {
+    return fetch(SB_URL + '/rest/v1/boodschappen_items', {
+      method: 'POST',
+      headers: { 'apikey': SB_KEY, 'Authorization': 'Bearer ' + tk, 'Content-Type': 'application/json', 'Prefer': 'return=minimal' },
+      body: JSON.stringify(rijen)
+    });
+  }).then(function(r) {
+    if (!r.ok) return r.text().then(function(t){ throw new Error(t); });
+    closeMod('mwt');
+    toast(rijen.length === 1 ? '1 item op de boodschappenlijst' : rijen.length + ' items op de boodschappenlijst', 'ok');
+    _wt = null;
+  }).catch(function(e) {
+    console.warn(e);
+    toast(navigator.onLine ? 'Opslaan mislukt. Probeer het opnieuw.' : 'Geen verbinding. Probeer het opnieuw.', 'er');
+    renderWegtik();
+  });
 }
 
 // -- SPOTIFY --------------------------
@@ -1877,12 +1890,7 @@ function _addMenuToShopping(dayIdx) {
   if (!d || !d.recipe) return;
   var r = recipes.find(function(x){ return x.id == d.recipe.id; });
   if (!r || !r.ingredients || !r.ingredients.length) { toast('Geen ingredienten', 'er'); return; }
-  var items = r.ingredients.map(function(ing) {
-    return { orig: ing, stripped: stripIng(ing), recipe: r.name, checked: false, id: Date.now() + Math.random() };
-  });
-  shopping = shopping.concat(items);
-  localStorage.setItem(SK, JSON.stringify(shopping));
-  toast(r.name + ' toegevoegd aan lijst', 'ok');
+  openWegtik(String(r.id), r.name, r.ingredients);
 }
 
 function _renderMenu() {
@@ -2144,14 +2152,8 @@ function _saveGenRecipe() {
 }
 
 function _genToShopping() {
-  if (!window._genRecipe || !window._genRecipe.ingredients) { toast('Geen ingredienten', 'er'); return; }
-  var name = window._genRecipe.name || 'Gegenereerd recept';
-  var items = window._genRecipe.ingredients.map(function(ing) {
-    return { orig: ing, stripped: stripIng(ing), recipe: name, checked: false, id: Date.now() + Math.random() };
-  });
-  shopping = shopping.concat(items);
-  localStorage.setItem(SK, JSON.stringify(shopping));
-  toast('Ingredienten toegevoegd aan lijst', 'ok');
+  if (!window._genRecipe || !window._genRecipe.ingredients || !window._genRecipe.ingredients.length) { toast('Geen ingredienten', 'er'); return; }
+  openWegtik(null, window._genRecipe.name || 'Gegenereerd recept', window._genRecipe.ingredients);
 }
 
 function _discardGen() {
@@ -2162,41 +2164,6 @@ function _discardGen() {
 }
 
 // -- INIT ------------------------------
-function showQR() {
-  var unchecked = shopping.filter(function(i){ return !i.checked; });
-  if (!unchecked.length) { toast('Geen items', 'er'); return; }
-  var items = unchecked.map(function(i){ return i.orig; });
-  var url = 'https://hendriksenrutger-dev.github.io/recepten/?shop=' + encodeURIComponent(JSON.stringify(items));
-  var qrEl = document.getElementById('qr-container');
-  qrEl.innerHTML = '<div class="sp2" style="margin:0 auto"></div>';
-  openMod('mqr');
-  var img = new Image();
-  img.src = 'https://api.qrserver.com/v1/create-qr-code/?size=340x340&data=' + encodeURIComponent(url) + '&margin=10';
-  img.width = 340;
-  img.height = 340;
-  img.style.cssText = 'border-radius:8px;display:block';
-  img.onload = function() { qrEl.innerHTML = ''; qrEl.appendChild(img); };
-  img.onerror = function() { qrEl.innerHTML = '<p style="color:var(--tm);font-size:.85rem">Geen internet voor QR code.</p>'; };
-}
-
-(function() {
-  var params = new URLSearchParams(window.location.search);
-  var shopData = params.get('shop');
-  if (shopData) {
-    try {
-      var items = JSON.parse(decodeURIComponent(shopData));
-      if (Array.isArray(items) && items.length) {
-        items.forEach(function(orig) {
-          shopping.push({ orig: orig, stripped: stripIng(orig), recipe: 'QR import', checked: false, id: Date.now() + Math.random() });
-        });
-        localStorage.setItem(SK, JSON.stringify(shopping));
-        window.history.replaceState({}, '', window.location.pathname);
-        setTimeout(function(){ showShopping(); toast(items.length + ' items geïmporteerd!', 'ok'); }, 600);
-      }
-    } catch(e) {}
-  }
-})();
-
 // -- AUTH --------------------------------
 function doLogin() {
   var email = document.getElementById('lg-email').value.trim();
@@ -2257,7 +2224,7 @@ function doLogout() {
   document.getElementById('lg-pass').value = '';
   document.getElementById('lg-err').classList.add('hide');
   // Hide all screens
-  ['mn','dt','sh','ck','sp'].forEach(function(id) {
+  ['mn','dt','ck','sp'].forEach(function(id) {
     var el = document.getElementById(id);
     if (el) el.classList.add('hide');
   });
@@ -2297,7 +2264,12 @@ function checkSession() {
         } else {
           showLogin();
         }
-      }).catch(function() { showLogin(); });
+      }).catch(function() {
+        // Geen verbinding: sessie NIET wissen (die wordt gedeeld met de boodschappen-app)
+        _authToken = session.access_token;
+        document.getElementById('lg').style.display = 'none';
+        loadRecipes();
+      });
     } else {
       showLogin();
     }
