@@ -4,7 +4,7 @@
 <meta charset="UTF-8"/>
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover"/>
 <meta name="theme-color" content="#1A3A5C"/>
-<meta name="version" content="v51"/>
+<meta name="version" content="v52"/>
 <meta name="apple-mobile-web-app-capable" content="yes"/>
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"/>
 <meta name="apple-mobile-web-app-title" content="Cucina"/>
@@ -2563,10 +2563,15 @@ function renderSkCols() {
       bodyHtml = '<div class="sk-waiting-msg">&#10003; Klaar!</div>';
     }
 
-    // -- Timer block
-    bodyHtml += '<div style="background:var(--bp);border:1px solid var(--br);border-radius:8px;padding:.5rem .65rem;margin-top:.4rem;display:flex;align-items:center;justify-content:space-between">' +
-      '<div style="font-family:Playfair Display,serif;font-size:1.1rem;font-weight:700;color:var(--bd)" id="skt-disp-' + id + '">' + timerDisplay + '</div>' +
-      '<button onclick="toggleSkTimer(\'' + id + '\')" id="skt-btn-' + id + '" style="background:var(--or);color:#fff;border:none;border-radius:6px;padding:.25rem .55rem;font-size:.75rem;font-weight:600;cursor:pointer">' + (timer.running ? '⏸' : '▶') + '</button>' +
+    // -- Timer block: detect auto time in current step
+    var autoSecs = (!isDone && steps[idx]) ? extractStepTime(steps[idx]) : 0;
+    var autoLabel = autoSecs > 0 ? '<span style="font-size:.62rem;background:rgba(232,100,42,.12);color:var(--or);border-radius:4px;padding:.1rem .35rem;font-weight:600">⏱ ' + (autoSecs >= 3600 ? Math.round(autoSecs/3600*10)/10 + ' uur' : Math.round(autoSecs/60) + ' min') + '</span>' : '';
+    bodyHtml += '<div style="background:var(--bp);border:1px solid var(--br);border-radius:8px;padding:.45rem .65rem;margin-top:.4rem;display:flex;align-items:center;justify-content:space-between;gap:.4rem">' +
+      '<div style="display:flex;align-items:center;gap:.4rem;flex:1;min-width:0">' +
+        '<div style="font-family:Playfair Display,serif;font-size:1.05rem;font-weight:700;color:var(--bd);min-width:52px" id="skt-disp-' + id + '">' + timerDisplay + '</div>' +
+        autoLabel +
+      '</div>' +
+      '<button onclick="toggleSkTimer(\'' + id + '\')" id="skt-btn-' + id + '" style="background:var(--or);color:#fff;border:none;border-radius:6px;padding:.22rem .5rem;font-size:.75rem;font-weight:600;cursor:pointer;flex-shrink:0">' + (timer.running ? '⏸' : '▶') + '</button>' +
     '</div>';
 
     // -- Andere gerechten hint
@@ -2612,12 +2617,70 @@ function renderSkCols() {
   }).join('');
 }
 
+function extractStepTime(text) {
+  // Match patterns like: 10 minuten, 1 uur, 2-3 min, 45 sec, 1,5 uur
+  var t = text.toLowerCase();
+  var secs = 0;
+  // uur
+  var m = t.match(/(\d+[,.]?\d*)\s*uur/);
+  if (m) secs += parseFloat(m[1].replace(',','.')) * 3600;
+  // minuten / min
+  m = t.match(/(\d+)\s*(?:tot|-)\s*(\d+)\s*min/);
+  if (m) { secs += Math.round((parseInt(m[1]) + parseInt(m[2])) / 2) * 60; }
+  else {
+    m = t.match(/(\d+[,.]?\d*)\s*min/);
+    if (m) secs += parseFloat(m[1].replace(',','.')) * 60;
+  }
+  // seconden
+  m = t.match(/(\d+)\s*sec/);
+  if (m) secs += parseInt(m[1]);
+  return Math.round(secs);
+}
+
+function startSkCountdown(id, secs) {
+  stopSkTimer(id);
+  if (!skTimers[id]) skTimers[id] = { secs: 0, display: '--:--', running: false };
+  skTimers[id].running = true;
+  skTimers[id].secs = secs;
+  skTimers[id].countdown = true;
+  var btn = document.getElementById('skt-btn-' + id);
+  if (btn) btn.textContent = '⏸';
+  skTimers[id].interval = setInterval(function() {
+    skTimers[id].secs--;
+    var s2 = Math.max(0, skTimers[id].secs);
+    var m2 = Math.floor(s2 / 60), s3 = s2 % 60;
+    var disp = (m2 < 10 ? '0' : '') + m2 + ':' + (s3 < 10 ? '0' : '') + s3;
+    skTimers[id].display = disp;
+    var el = document.getElementById('skt-disp-' + id);
+    var elh = document.getElementById('skt-head-' + id);
+    if (el) { el.textContent = disp; el.style.color = s2 <= 30 ? '#C62828' : 'var(--bd)'; }
+    if (elh) { elh.textContent = disp; elh.style.color = s2 <= 30 ? '#C62828' : 'var(--os)'; }
+    if (s2 <= 0) {
+      stopSkTimer(id);
+      playBeep();
+      toast('⏰ Timer klaar!', 'ok');
+    }
+  }, 1000);
+}
+
 function skNav(id, dir) {
   var r = recipes.find(function(x){ return x.id == id; });
   if (!r) return;
   var total = (r.steps || []).length;
   skStepIdx[id] = Math.max(0, Math.min(total - 1, (skStepIdx[id] || 0) + dir));
   stopSkTimer(id);
+  // Auto-start countdown timer if step contains a time
+  var newStep = (r.steps || [])[skStepIdx[id]];
+  if (newStep) {
+    var autoSecs = extractStepTime(newStep);
+    if (autoSecs > 0) {
+      if (!skTimers[id]) skTimers[id] = { secs: 0, display: '--:--', running: false };
+      skTimers[id].secs = autoSecs;
+      skTimers[id].display = (Math.floor(autoSecs/60) < 10 ? '0' : '') + Math.floor(autoSecs/60) + ':' + (autoSecs%60 < 10 ? '0' : '') + autoSecs%60;
+      // Small delay so renderSkCols renders first, then auto-start
+      setTimeout(function(){ startSkCountdown(id, autoSecs); }, 100);
+    }
+  }
   renderSkTimeline();
   renderSkCols();
 }
@@ -2641,7 +2704,8 @@ function startSkTimer(id) {
   stopSkTimer(id);
   if (!skTimers[id]) skTimers[id] = { secs: 0, display: '00:00', running: false };
   skTimers[id].running = true;
-  skTimers[id].secs = skTimers[id].secs || 0;
+  skTimers[id].countdown = false;
+  skTimers[id].secs = 0;
   var btn = document.getElementById('skt-btn-' + id);
   if (btn) btn.textContent = '⏸';
   skTimers[id].interval = setInterval(function() {
@@ -2652,8 +2716,8 @@ function startSkTimer(id) {
     skTimers[id].display = disp;
     var el = document.getElementById('skt-disp-' + id);
     var elh = document.getElementById('skt-head-' + id);
-    if (el) el.textContent = disp;
-    if (elh) elh.textContent = disp;
+    if (el) { el.textContent = disp; el.style.color = 'var(--bd)'; }
+    if (elh) { elh.textContent = disp; elh.style.color = 'var(--os)'; }
   }, 1000);
 }
 
