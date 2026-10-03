@@ -4,7 +4,7 @@
 <meta charset="UTF-8"/>
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover"/>
 <meta name="theme-color" content="#1A3A5C"/>
-<meta name="version" content="v52"/>
+<meta name="version" content="v53"/>
 <meta name="apple-mobile-web-app-capable" content="yes"/>
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"/>
 <meta name="apple-mobile-web-app-title" content="Cucina"/>
@@ -2385,14 +2385,18 @@ function calcStartTimes() {
   var html = skSelected.map(function(id) {
     var r = recipes.find(function(x){ return x.id == id; });
     if (!r) return '';
-    var dur = parseInt(r.time) || 30;
-    var startMin = eetMin - dur;
+    var steps = r.steps || [];
+    var stepMins = steps.map(function(s){ var sec = extractStepTime(s); return sec > 0 ? sec/60 : 2; });
+    var totalMins = stepMins.reduce(function(a,b){ return a+b; }, 0);
+    if (totalMins < 5) totalMins = parseInt(r.time) || 30;
+    var startMin = eetMin - Math.round(totalMins);
     if (startMin < 0) startMin += 24 * 60;
     var sh = String(Math.floor(startMin / 60) % 24).padStart(2, '0');
     var sm = String(startMin % 60).padStart(2, '0');
     var em = r.emoji || CE[r.category] || '🍽️';
+    var totalLabel = Math.round(totalMins) + ' min';
     return '<div class="sk-start-row">' +
-      '<div class="sk-start-name">' + em + ' ' + r.name + '</div>' +
+      '<div class="sk-start-name">' + em + ' ' + r.name + '<span style="font-size:.72rem;color:var(--tl);margin-left:.35rem">' + totalLabel + '</span></div>' +
       '<div class="sk-start-time">' + sh + ':' + sm + '</div>' +
     '</div>';
   }).join('');
@@ -2407,34 +2411,51 @@ function startSamenKoken() {
   var sm = String(eetMin % 60).padStart(2, '0');
   document.getElementById('skt').textContent = 'Klaar om ' + sh + ':' + sm;
 
-  // Store start times per recipe
+  // Per-stap tijden uitrekenen (op basis van staptekst)
+  var DEFAULT_STEP_MIN = 2; // minuten voor stappen zonder tijdsaanduiding
+
+  function calcStepMins(steps) {
+    return steps.map(function(s) {
+      var secs = extractStepTime(s);
+      return secs > 0 ? secs / 60 : DEFAULT_STEP_MIN;
+    });
+  }
+
+  // Store start times per recipe (op basis van echte staptijden)
   skStartTimes = {};
   skSelected.forEach(function(id) {
     var r = recipes.find(function(x){ return x.id == id; });
-    var dur = parseInt((r && r.time) || 30);
-    var startMin = eetMin - dur;
+    if (!r) return;
+    var steps = r.steps || [];
+    var stepMins = calcStepMins(steps);
+    var totalMins = stepMins.reduce(function(a, b){ return a + b; }, 0);
+    // Gebruik echte staptijden als ze plausibel zijn, anders recipe.time
+    var recipeMin = parseInt(r.time) || 30;
+    if (totalMins < 5) totalMins = recipeMin; // fallback als niks gevonden
+    var startMin = eetMin - Math.round(totalMins);
     if (startMin < 0) startMin += 24 * 60;
     skStartTimes[id] = String(Math.floor(startMin / 60) % 24).padStart(2,'0') + ':' + String(startMin % 60).padStart(2,'0');
   });
 
-  // Build timeline events
+  // Build timeline events met nauwkeurige staptijden
   skTimeline = [];
   skSelected.forEach(function(id, ci) {
     var r = recipes.find(function(x){ return x.id == id; });
     if (!r) return;
-    var dur = parseInt(r.time) || 30;
     var steps = r.steps || [];
-    var stepTime = dur / Math.max(steps.length, 1);
+    var stepMins = calcStepMins(steps);
     var startParts = skStartTimes[id].split(':');
     var startMin = parseInt(startParts[0]) * 60 + parseInt(startParts[1]);
     var em = r.emoji || '🍽️';
     var col = skColors[ci % skColors.length];
     // Start event
     skTimeline.push({ timeMin: startMin, recipeId: id, stepIdx: -1, label: em + ' ' + r.name.split(' ').slice(0,3).join(' ') + ' gestart', col: col });
-    // Step events (from step 1 onwards, not step 0)
+    // Stap events met gecumuleerde echte tijden
+    var cumMin = 0;
     steps.forEach(function(s, si) {
-      if (si === 0) return;
-      var evMin = startMin + Math.round(si * stepTime);
+      cumMin += stepMins[si];
+      if (si === 0) return; // start event al toegevoegd
+      var evMin = startMin + Math.round(cumMin - stepMins[si]); // moment waarop stap begint
       skTimeline.push({ timeMin: evMin, recipeId: id, stepIdx: si, label: em + ' Stap ' + (si+1) + ': ' + s.slice(0,40) + (s.length > 40 ? '…' : ''), col: col });
     });
   });
