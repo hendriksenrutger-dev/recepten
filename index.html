@@ -4,7 +4,7 @@
 <meta charset="UTF-8"/>
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover"/>
 <meta name="theme-color" content="#1A3A5C"/>
-<meta name="version" content="v48"/>
+<meta name="version" content="v49"/>
 <meta name="apple-mobile-web-app-capable" content="yes"/>
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"/>
 <meta name="apple-mobile-web-app-title" content="Cucina"/>
@@ -2286,6 +2286,7 @@ var skSelectMode = false;
 var skSelected = [];
 var skTimers = {};
 var skStepIdx = {};
+var skStartTimes = {};
 
 function enterSelectMode() {
   skSelectMode = true;
@@ -2368,7 +2369,6 @@ function calcStartTimes() {
 }
 
 function startSamenKoken() {
-  // Build columns
   var eetVal = document.getElementById('sk-eettime').value;
   var parts = eetVal.split(':');
   var eetMin = parseInt(parts[0]) * 60 + parseInt(parts[1]);
@@ -2376,14 +2376,22 @@ function startSamenKoken() {
   var sm = String(eetMin % 60).padStart(2, '0');
   document.getElementById('skt').textContent = 'Klaar om ' + sh + ':' + sm;
 
-  // Init step indices and timers
+  // Store start times per recipe
+  skStartTimes = {};
+  skSelected.forEach(function(id) {
+    var r = recipes.find(function(x){ return x.id == id; });
+    var dur = parseInt((r && r.time) || 30);
+    var startMin = eetMin - dur;
+    if (startMin < 0) startMin += 24 * 60;
+    skStartTimes[id] = String(Math.floor(startMin / 60) % 24).padStart(2,'0') + ':' + String(startMin % 60).padStart(2,'0');
+  });
+
   skStepIdx = {};
   skTimers = {};
   skSelected.forEach(function(id){ skStepIdx[id] = 0; });
 
   var count = skSelected.length;
   document.getElementById('sk-cols').style.setProperty('--sk-count', count);
-
   document.getElementById('sk-setup').classList.add('hide');
   document.getElementById('sk-cook').classList.remove('hide');
   renderSkCols();
@@ -2394,49 +2402,88 @@ function renderSkCols() {
   cols.innerHTML = skSelected.map(function(id) {
     var r = recipes.find(function(x){ return x.id == id; });
     if (!r) return '';
-    var f = 1; // no scaling in samen koken for simplicity
     var steps = r.steps || [];
+    var ings = r.ingredients || [];
     var idx = skStepIdx[id] || 0;
     var total = steps.length;
-    var em = r.emoji || CE[r.category] || '🍽️';
+    var em = r.emoji || CE[r.category] || '\u{1F37D}';
     var timer = skTimers[id] || { display: '--:--', running: false };
+    var isDone = idx >= total;
+    var startTime = skStartTimes[id] || '';
 
-    var curStep = idx < total ? steps[idx] : null;
-    var nxtStep = idx + 1 < total ? steps[idx + 1] : null;
+    // -- Header: show start time if not yet started (idx===0 and timer not running)
+    var timerDisplay = timer.display;
+    var headExtra = '';
+    if (idx === 0 && !timer.running && timer.display === '--:--' && startTime) {
+      headExtra = '<div style="font-size:.72rem;color:rgba(255,255,255,.6);margin-top:.1rem">Begin om ' + startTime + '</div>';
+    }
 
+    // -- Current step
     var bodyHtml = '';
-    if (curStep) {
+    if (!isDone) {
+      var curStep = steps[idx];
+
+      // Find ingredients mentioned in this step
+      var stepLower = curStep.toLowerCase();
+      var relIngs = ings.filter(function(ing) {
+        var ingWords = ing.toLowerCase().replace(/[0-9,\.]/g,'').trim().split(/\s+/);
+        return ingWords.some(function(w){ return w.length > 3 && stepLower.indexOf(w) > -1; });
+      });
+
       bodyHtml += '<div class="sk-step-cur">' +
         '<div class="sk-step-num">Stap ' + (idx+1) + ' / ' + total + '</div>' +
         '<div class="sk-step-txt">' + curStep + '</div>' +
+        (relIngs.length ? '<div style="margin-top:.5rem;padding-top:.4rem;border-top:1px solid rgba(232,100,42,.2)">' +
+          relIngs.map(function(ing){ return '<div style="font-size:.75rem;color:var(--tm);padding:.1rem 0">&#8226; ' + ing + '</div>'; }).join('') +
+        '</div>' : '') +
       '</div>';
-    }
-    if (nxtStep) {
-      bodyHtml += '<div class="sk-step-next">' +
-        '<div class="sk-step-num">Volgende</div>' +
-        '<div class="sk-step-txt">' + nxtStep + '</div>' +
-      '</div>';
-    }
-    if (!curStep) {
+    } else {
       bodyHtml = '<div class="sk-waiting-msg">&#10003; Klaar!</div>';
     }
 
-    // Timer block
+    // -- Timer block
     bodyHtml += '<div style="background:var(--bp);border:1px solid var(--br);border-radius:8px;padding:.5rem .65rem;margin-top:.4rem;display:flex;align-items:center;justify-content:space-between">' +
-      '<div style="font-family:Playfair Display,serif;font-size:1.1rem;font-weight:700;color:var(--bd)" id="skt-disp-' + id + '">' + timer.display + '</div>' +
+      '<div style="font-family:Playfair Display,serif;font-size:1.1rem;font-weight:700;color:var(--bd)" id="skt-disp-' + id + '">' + timerDisplay + '</div>' +
       '<button onclick="toggleSkTimer(\'' + id + '\')" id="skt-btn-' + id + '" style="background:var(--or);color:#fff;border:none;border-radius:6px;padding:.25rem .55rem;font-size:.75rem;font-weight:600;cursor:pointer">' + (timer.running ? '⏸' : '▶') + '</button>' +
     '</div>';
 
+    // -- Andere gerechten hint
+    var otherHints = skSelected.filter(function(oid){ return oid !== id; }).map(function(oid) {
+      var or2 = recipes.find(function(x){ return x.id == oid; });
+      if (!or2) return '';
+      var oidx = skStepIdx[oid] || 0;
+      var osteps = or2.steps || [];
+      var oem = or2.emoji || CE[or2.category] || '\u{1F37D}';
+      if (oidx >= osteps.length) {
+        return '<div style="font-size:.75rem;color:var(--gn);padding:.3rem 0;display:flex;gap:.4rem;align-items:center">' +
+          '<span>' + oem + '</span><span>&#10003; ' + or2.name + ' klaar</span>' +
+        '</div>';
+      }
+      return '<div style="font-size:.75rem;color:var(--tm);padding:.3rem 0;display:flex;gap:.4rem;align-items:flex-start">' +
+        '<span style="flex-shrink:0">' + oem + '</span>' +
+        '<span><strong style="color:var(--tx)">' + or2.name + '</strong> — stap ' + (oidx+1) + '/' + osteps.length + ': ' + osteps[oidx].slice(0,60) + (osteps[oidx].length > 60 ? '…' : '') + '</span>' +
+      '</div>';
+    }).join('');
+
+    if (otherHints) {
+      bodyHtml += '<div style="background:var(--c2);border:1px solid var(--br);border-radius:8px;padding:.5rem .65rem;margin-top:.4rem">' +
+        '<div style="font-size:.65rem;font-weight:600;text-transform:uppercase;letter-spacing:.05em;color:var(--tm);margin-bottom:.2rem">Ander gerecht</div>' +
+        otherHints +
+      '</div>';
+    }
+
+    // -- Nav
     var navHtml = '';
     if (idx > 0) navHtml += '<button class="sk-nav-prev" onclick="skNav(\'' + id + '\',-1)">‹ Vorige</button>';
-    if (idx < total - 1) navHtml += '<button class="sk-nav-next" onclick="skNav(\'' + id + '\',1)">Volgende ›</button>';
+    if (!isDone) navHtml += '<button class="sk-nav-next" onclick="skNav(\'' + id + '\',1)">Volgende ›</button>';
     else navHtml += '<button class="sk-nav-done" onclick="skColDone(\'' + id + '\')">&#10003; Klaar</button>';
 
     return '<div class="sk-col">' +
       '<div class="sk-col-head">' +
         '<div class="sk-col-emoji">' + em + '</div>' +
         '<div class="sk-col-name">' + r.name + '</div>' +
-        '<div class="sk-col-timer" id="skt-head-' + id + '">' + timer.display + '</div>' +
+        '<div class="sk-col-timer" id="skt-head-' + id + '">' + timerDisplay + '</div>' +
+        headExtra +
       '</div>' +
       '<div class="sk-col-body">' + bodyHtml + '</div>' +
       '<div class="sk-col-nav">' + navHtml + '</div>' +
