@@ -4,7 +4,7 @@
 <meta charset="UTF-8"/>
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover"/>
 <meta name="theme-color" content="#1A3A5C"/>
-<meta name="version" content="v53"/>
+<meta name="version" content="v54"/>
 <meta name="apple-mobile-web-app-capable" content="yes"/>
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"/>
 <meta name="apple-mobile-web-app-title" content="Cucina"/>
@@ -2382,22 +2382,65 @@ function calcStartTimes() {
   if (!eetVal) return;
   var parts = eetVal.split(':');
   var eetMin = parseInt(parts[0]) * 60 + parseInt(parts[1]);
-  var html = skSelected.map(function(id) {
+  // Quick schedule per recipe for setup preview
+  function quickTotal(r) {
+    var steps = r.steps || [];
+    var t = steps.reduce(function(a,s){ var sec = extractStepTime(s); return a + (sec > 0 ? sec/60 : 2); }, 0);
+    return t < 5 ? (parseInt(r.time) || 30) : t;
+  }
+  var sortedIds = skSelected.slice().sort(function(a,b) {
+    var ra = recipes.find(function(x){ return x.id==a; });
+    var rb = recipes.find(function(x){ return x.id==b; });
+    return quickTotal(rb||{}) - quickTotal(ra||{});
+  });
+  var mainR = recipes.find(function(x){ return x.id==sortedIds[0]; });
+  var mainTotal = mainR ? quickTotal(mainR) : 30;
+  var mainStart = eetMin - Math.round(mainTotal);
+
+  // Find passive windows in main recipe for display
+  var mainSteps = (mainR && mainR.steps) || [];
+  var mainPassiveWindows = [];
+  var mCum = 0;
+  mainSteps.forEach(function(s) {
+    var d = extractStepTime(s); var dm = d > 0 ? d/60 : 2;
+    if (d >= 60) {
+      var t2 = s.toLowerCase();
+      var pw = ['sudder','stoof','stov','laat koken','in de oven','marineer','laat trekken','laat inkoken','laat pruttelen'];
+      if (pw.some(function(w){ return t2.indexOf(w)>-1; })) {
+        mainPassiveWindows.push({ start: mainStart + mCum, end: mainStart + mCum + dm });
+      }
+    }
+    mCum += dm;
+  });
+
+  var html = sortedIds.map(function(id, idx) {
     var r = recipes.find(function(x){ return x.id == id; });
     if (!r) return '';
-    var steps = r.steps || [];
-    var stepMins = steps.map(function(s){ var sec = extractStepTime(s); return sec > 0 ? sec/60 : 2; });
-    var totalMins = stepMins.reduce(function(a,b){ return a+b; }, 0);
-    if (totalMins < 5) totalMins = parseInt(r.time) || 30;
-    var startMin = eetMin - Math.round(totalMins);
+    var total = quickTotal(r);
+    var startMin, note = '';
+    if (idx === 0) {
+      startMin = mainStart;
+    } else {
+      var idealStart = eetMin - Math.round(total);
+      startMin = idealStart;
+      var bestFit = null;
+      mainPassiveWindows.forEach(function(w) {
+        if (idealStart >= w.start && idealStart <= w.end) { bestFit = idealStart; }
+        if (w.end - w.start >= total * 0.6) {
+          var alt = w.end - total;
+          if (bestFit === null || Math.abs(alt - idealStart) < Math.abs(bestFit - idealStart)) bestFit = alt;
+          if (bestFit === null || Math.abs(w.start - idealStart) < Math.abs(bestFit - idealStart)) bestFit = w.start;
+        }
+      });
+      if (bestFit !== null) { startMin = Math.round(bestFit); note = ' · past in wachttijd'; }
+    }
     if (startMin < 0) startMin += 24 * 60;
-    var sh = String(Math.floor(startMin / 60) % 24).padStart(2, '0');
-    var sm = String(startMin % 60).padStart(2, '0');
+    var sh = String(Math.floor(startMin/60)%24).padStart(2,'0');
+    var sm2 = String(startMin%60).padStart(2,'0');
     var em = r.emoji || CE[r.category] || '🍽️';
-    var totalLabel = Math.round(totalMins) + ' min';
     return '<div class="sk-start-row">' +
-      '<div class="sk-start-name">' + em + ' ' + r.name + '<span style="font-size:.72rem;color:var(--tl);margin-left:.35rem">' + totalLabel + '</span></div>' +
-      '<div class="sk-start-time">' + sh + ':' + sm + '</div>' +
+      '<div class="sk-start-name">' + em + ' ' + r.name + '<span style="font-size:.7rem;color:' + (note ? 'var(--gn)' : 'var(--tl)') + ';margin-left:.35rem">' + Math.round(total) + ' min' + note + '</span></div>' +
+      '<div class="sk-start-time">' + sh + ':' + sm2 + '</div>' +
     '</div>';
   }).join('');
   document.getElementById('sk-starttimes').innerHTML = html;
@@ -2411,52 +2454,122 @@ function startSamenKoken() {
   var sm = String(eetMin % 60).padStart(2, '0');
   document.getElementById('skt').textContent = 'Klaar om ' + sh + ':' + sm;
 
-  // Per-stap tijden uitrekenen (op basis van staptekst)
-  var DEFAULT_STEP_MIN = 2; // minuten voor stappen zonder tijdsaanduiding
+  var DEFAULT_STEP_MIN = 2;
 
-  function calcStepMins(steps) {
-    return steps.map(function(s) {
-      var secs = extractStepTime(s);
-      return secs > 0 ? secs / 60 : DEFAULT_STEP_MIN;
-    });
+  function stepDurMin(s) {
+    var secs = extractStepTime(s);
+    return secs > 0 ? secs / 60 : DEFAULT_STEP_MIN;
   }
 
-  // Store start times per recipe (op basis van echte staptijden)
-  skStartTimes = {};
+  function isPassiveStep(s) {
+    var t = s.toLowerCase();
+    var words = ['sudder','stoof','stov','laat koken','laat staan','laat rusten',
+      'in de oven','afkoelen','marineer','laat trekken','laat inkoken',
+      'laat pruttelen','laat opstijven','laat rijzen','koel af','laat drogen',
+      'laat wellen','laat wachten'];
+    return extractStepTime(s) >= 60 && words.some(function(w){ return t.indexOf(w) > -1; });
+  }
+
+  // Build schedule per recipe: array of {si, durMin, passive, startRelMin}
+  function buildSchedule(r) {
+    var steps = r.steps || [];
+    var sched = []; var cum = 0;
+    steps.forEach(function(s, si) {
+      var d = stepDurMin(s);
+      sched.push({ si: si, durMin: d, passive: isPassiveStep(s), startRelMin: cum, text: s });
+      cum += d;
+    });
+    return sched;
+  }
+
+  // Build schedules for all recipes
+  var schedules = {};
   skSelected.forEach(function(id) {
     var r = recipes.find(function(x){ return x.id == id; });
     if (!r) return;
-    var steps = r.steps || [];
-    var stepMins = calcStepMins(steps);
-    var totalMins = stepMins.reduce(function(a, b){ return a + b; }, 0);
-    // Gebruik echte staptijden als ze plausibel zijn, anders recipe.time
-    var recipeMin = parseInt(r.time) || 30;
-    if (totalMins < 5) totalMins = recipeMin; // fallback als niks gevonden
-    var startMin = eetMin - Math.round(totalMins);
-    if (startMin < 0) startMin += 24 * 60;
-    skStartTimes[id] = String(Math.floor(startMin / 60) % 24).padStart(2,'0') + ':' + String(startMin % 60).padStart(2,'0');
+    var sched = buildSchedule(r);
+    var total = sched.reduce(function(a,b){ return a + b.durMin; }, 0);
+    if (total < 5) { // fallback: use recipe.time evenly
+      var dur = parseInt(r.time) || 30;
+      sched.forEach(function(s){ s.durMin = dur / sched.length; s.passive = false; });
+      var c2 = 0; sched.forEach(function(s){ s.startRelMin = c2; c2 += s.durMin; });
+      total = dur;
+    }
+    schedules[id] = { steps: sched, totalMin: total };
   });
 
-  // Build timeline events met nauwkeurige staptijden
+  // Sort: longest recipe first (main)
+  var sorted = skSelected.slice().sort(function(a, b) {
+    return (schedules[b] ? schedules[b].totalMin : 0) - (schedules[a] ? schedules[a].totalMin : 0);
+  });
+
+  // Main recipe starts at eetMin - its total duration
+  skStartTimes = {};
+  var mainId = sorted[0];
+  var mainSched = schedules[mainId];
+  var mainStartMin = eetMin - Math.round(mainSched.totalMin);
+  if (mainStartMin < 0) mainStartMin += 24 * 60;
+  skStartTimes[mainId] = String(Math.floor(mainStartMin/60)%24).padStart(2,'0') + ':' + String(mainStartMin%60).padStart(2,'0');
+
+  // Secondary recipes: find best passive window in main recipe
+  sorted.slice(1).forEach(function(id) {
+    var r = recipes.find(function(x){ return x.id == id; });
+    if (!r) return;
+    var secTotal = Math.round(schedules[id].totalMin);
+    // Ideal: start so it ends at eetMin
+    var idealStart = eetMin - secTotal;
+
+    // Find passive windows in main recipe
+    var passiveWindows = mainSched.steps.filter(function(s){ return s.passive; }).map(function(s) {
+      return {
+        winStart: mainStartMin + Math.round(s.startRelMin),
+        winEnd: mainStartMin + Math.round(s.startRelMin + s.durMin)
+      };
+    });
+
+    // Find the window that best accommodates: sec starts within window
+    var bestStart = idealStart; // default
+    var bestFit = null;
+    passiveWindows.forEach(function(w) {
+      // Can we start sec recipe so it ends at eetMin and starts within this window?
+      if (idealStart >= w.winStart && idealStart <= w.winEnd) {
+        bestFit = idealStart; // ideal start falls inside passive window
+      }
+      // Or start sec recipe so it starts at window start (if window is big enough)
+      if (w.winEnd - w.winStart >= secTotal * 0.6) {
+        var altStart = w.winEnd - secTotal;
+        if (altStart >= w.winStart && (bestFit === null || Math.abs(altStart - idealStart) < Math.abs(bestFit - idealStart))) {
+          bestFit = altStart;
+        }
+        // Start at window start
+        if (bestFit === null || Math.abs(w.winStart - idealStart) < Math.abs(bestFit - idealStart)) {
+          bestFit = w.winStart;
+        }
+      }
+    });
+
+    var secStart = Math.round(bestFit !== null ? bestFit : bestStart);
+    if (secStart < 0) secStart += 24 * 60;
+    skStartTimes[id] = String(Math.floor(secStart/60)%24).padStart(2,'0') + ':' + String(secStart%60).padStart(2,'0');
+  });
+
+  // Build timeline events
   skTimeline = [];
   skSelected.forEach(function(id, ci) {
     var r = recipes.find(function(x){ return x.id == id; });
     if (!r) return;
-    var steps = r.steps || [];
-    var stepMins = calcStepMins(steps);
+    var sched = schedules[id];
+    if (!sched) return;
     var startParts = skStartTimes[id].split(':');
     var startMin = parseInt(startParts[0]) * 60 + parseInt(startParts[1]);
     var em = r.emoji || '🍽️';
     var col = skColors[ci % skColors.length];
-    // Start event
     skTimeline.push({ timeMin: startMin, recipeId: id, stepIdx: -1, label: em + ' ' + r.name.split(' ').slice(0,3).join(' ') + ' gestart', col: col });
-    // Stap events met gecumuleerde echte tijden
-    var cumMin = 0;
-    steps.forEach(function(s, si) {
-      cumMin += stepMins[si];
-      if (si === 0) return; // start event al toegevoegd
-      var evMin = startMin + Math.round(cumMin - stepMins[si]); // moment waarop stap begint
-      skTimeline.push({ timeMin: evMin, recipeId: id, stepIdx: si, label: em + ' Stap ' + (si+1) + ': ' + s.slice(0,40) + (s.length > 40 ? '…' : ''), col: col });
+    sched.steps.forEach(function(s) {
+      if (s.si === 0) return;
+      var evMin = startMin + Math.round(s.startRelMin);
+      var passiveMark = s.passive ? ' ⏳' : '';
+      skTimeline.push({ timeMin: evMin, recipeId: id, stepIdx: s.si, label: em + ' Stap ' + (s.si+1) + ': ' + s.text.slice(0,38) + (s.text.length > 38 ? '…' : '') + passiveMark, col: col });
     });
   });
   // End event
