@@ -4,7 +4,7 @@
 <meta charset="UTF-8"/>
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover"/>
 <meta name="theme-color" content="#1A3A5C"/>
-<meta name="version" content="v46"/>
+<meta name="version" content="v47"/>
 <meta name="apple-mobile-web-app-capable" content="yes"/>
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"/>
 <meta name="apple-mobile-web-app-title" content="Cucina"/>
@@ -265,13 +265,71 @@ textarea{resize:vertical;min-height:88px}
 
 /* TABLET LAYOUT */
 @media (min-width: 768px) {
-  #app { max-width: 860px; }
+  #app { max-width: 920px; }
   .ov { align-items: center; }
-  .mo { border-radius: 16px; max-width: 560px; max-height: 85dvh; }
+  .mo { border-radius: 16px; max-width: 580px; max-height: 85dvh; }
   .moh { display: none; }
+  /* Receptenlijst: 2 kolommen */
+  .rl { display: grid; grid-template-columns: 1fr 1fr; gap: .5rem; align-content: start; }
+  .emp { grid-column: 1 / -1; }
+  /* Detailpagina: bredere content */
+  .db { max-width: 720px; margin: 0 auto; padding: 1.5rem 2rem 5rem; }
+  .dst { grid-template-columns: repeat(3, 1fr); }
+  /* Kookstand kolommen */
+  #sk-cols { display: grid !important; grid-template-columns: repeat(var(--sk-count, 2), 1fr); gap: 1rem; }
 }
 
 .sw{background:#fff;border-bottom:1px solid #D0DFF0;flex-shrink:0;padding:.6rem .75rem;display:flex;flex-direction:column;gap:.4rem}
+
+/* SELECTIE / SAMEN KOKEN */
+.rc.sel{border-color:var(--or);background:rgba(232,100,42,.04)}
+.rc-cb{width:22px;height:22px;border:2px solid var(--br);border-radius:6px;flex-shrink:0;display:flex;align-items:center;justify-content:center;transition:all .2s;cursor:pointer}
+.rc-cb.checked{background:var(--or);border-color:var(--or)}
+.sk-bar{position:fixed;bottom:0;left:50%;transform:translateX(-50%);width:100%;max-width:920px;background:var(--bd);color:#fff;padding:.85rem 1.25rem;display:flex;align-items:center;justify-content:space-between;gap:.75rem;z-index:150;box-shadow:0 -4px 20px rgba(26,58,92,.2)}
+.sk-bar.hide{display:none!important}
+.sk-info{font-size:.85rem;color:rgba(255,255,255,.7)}
+.sk-info span{color:var(--os);font-weight:600}
+.sk-btns{display:flex;gap:.5rem}
+.sk-cancel{background:rgba(255,255,255,.1);border:none;color:#fff;padding:.5rem .85rem;border-radius:8px;font-size:.82rem;cursor:pointer}
+.sk-start{background:var(--or);border:none;color:#fff;padding:.5rem 1rem;border-radius:8px;font-size:.85rem;font-weight:600;cursor:pointer}
+
+/* SAMEN KOOKSTAND */
+#sk{display:flex;flex-direction:column;height:100dvh;background:var(--cr)}
+.skh{background:var(--bd);color:#fff;padding:.85rem 1.25rem;display:flex;align-items:center;gap:.75rem;flex-shrink:0}
+.skt{font-family:'Playfair Display',serif;font-style:italic;font-size:1.05rem;flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.skti{background:rgba(255,107,53,.25);border:1px solid rgba(255,107,53,.4);color:var(--os);font-size:.7rem;font-weight:600;padding:.2rem .5rem;border-radius:99px;white-space:nowrap}
+.sk-setup{flex:1;overflow-y:auto;padding:1.25rem;display:flex;flex-direction:column;gap:1rem}
+.sk-setup-card{background:#fff;border:1px solid var(--br);border-radius:var(--ra);padding:1rem 1.25rem}
+.sk-setup-title{font-family:'Playfair Display',serif;font-size:1rem;color:var(--tx);margin-bottom:.75rem}
+.sk-time-row{display:flex;align-items:center;gap:.75rem}
+.sk-time-label{font-size:.85rem;color:var(--tm);min-width:80px}
+.sk-time-input{background:var(--bp);border:1px solid var(--br);border-radius:8px;padding:.5rem .75rem;font-family:'Playfair Display',serif;font-size:1.2rem;font-weight:700;color:var(--tx);text-align:center;width:100px;outline:none}
+.sk-start-row{display:flex;align-items:center;justify-content:space-between;padding:.5rem 0;border-bottom:1px solid var(--br)}
+.sk-start-row:last-child{border-bottom:none}
+.sk-start-name{font-size:.88rem;color:var(--tx);display:flex;align-items:center;gap:.4rem}
+.sk-start-time{font-size:.88rem;font-weight:700;color:var(--or)}
+.sk-start-btn{background:var(--or);border:none;color:#fff;border-radius:10px;padding:.85rem;font-family:'DM Sans',sans-serif;font-size:.95rem;font-weight:600;cursor:pointer;width:100%;display:flex;align-items:center;justify-content:center;gap:.5rem}
+#sk-cols{display:flex;flex:1;overflow:hidden;gap:.5rem;padding:.75rem}
+.sk-col{flex:1;min-width:0;display:flex;flex-direction:column;background:#fff;border:1px solid var(--br);border-radius:var(--ra);overflow:hidden}
+.sk-col-head{background:var(--bd);padding:.6rem .85rem;flex-shrink:0}
+.sk-col-head.waiting{background:var(--tm)}
+.sk-col-emoji{font-size:1.2rem}
+.sk-col-name{font-size:.75rem;color:rgba(255,255,255,.85);font-family:'Playfair Display',serif;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin:.1rem 0}
+.sk-col-timer{font-size:.78rem;font-weight:700;color:var(--os)}
+.sk-col-timer.waiting{color:rgba(255,255,255,.5)}
+.sk-col-body{flex:1;overflow-y:auto;padding:.65rem}
+.sk-step-cur{background:rgba(232,100,42,.06);border:1px solid rgba(232,100,42,.2);border-radius:8px;padding:.6rem .75rem;margin-bottom:.5rem}
+.sk-step-num{font-size:.65rem;font-weight:700;color:var(--or);text-transform:uppercase;letter-spacing:.05em;margin-bottom:.2rem}
+.sk-step-txt{font-size:.8rem;line-height:1.5;color:var(--tx)}
+.sk-step-next{padding:.5rem .75rem;border-radius:8px;background:var(--bp);margin-bottom:.4rem}
+.sk-step-next .sk-step-num{color:var(--tm)}
+.sk-step-next .sk-step-txt{color:var(--tm)}
+.sk-waiting-msg{text-align:center;padding:1.5rem .5rem;color:var(--tm);font-size:.85rem}
+.sk-waiting-time{font-family:'Playfair Display',serif;font-size:1.6rem;font-weight:700;color:var(--or);display:block;margin-bottom:.25rem}
+.sk-col-nav{padding:.5rem .65rem;border-top:1px solid var(--br);flex-shrink:0;display:flex;gap:.4rem}
+.sk-nav-prev{flex:1;background:var(--bp);border:1px solid var(--br);color:var(--tx);border-radius:8px;padding:.55rem;font-size:.8rem;font-weight:600;cursor:pointer;font-family:'DM Sans',sans-serif}
+.sk-nav-next{flex:2;background:var(--bd);border:none;color:#fff;border-radius:8px;padding:.55rem;font-size:.8rem;font-weight:600;cursor:pointer;font-family:'DM Sans',sans-serif}
+.sk-nav-done{background:var(--or);border:none;color:#fff;border-radius:8px;padding:.55rem;font-size:.8rem;font-weight:600;cursor:pointer;width:100%;font-family:'DM Sans',sans-serif}
 
 /* LOGIN */
 #lg{position:fixed;inset:0;background:var(--bd);display:flex;flex-direction:column;align-items:center;justify-content:center;z-index:9999;padding:2rem}
@@ -409,6 +467,11 @@ textarea{resize:vertical;min-height:88px}
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/></svg>
         </button>
       </div>
+      <div class="fai"><span class="fal">Samen koken</span>
+        <button class="fas" onclick="enterSelectMode();closeFab()">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>
+        </button>
+      </div>
     </div>
     <button class="fmb" id="fmb" onclick="toggleFab()">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 5v14M5 12h14"/></svg>
@@ -429,6 +492,50 @@ textarea{resize:vertical;min-height:88px}
     </div>
   </div>
   <div class="db" id="dbody"></div>
+</div>
+
+<!-- SAMEN KOKEN SCHERM -->
+<div id="sk" class="hide">
+  <div class="ts"></div>
+  <div class="skh">
+    <button class="bb" onclick="exitSamenKoken()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6 6 18M6 6l12 12"/></svg></button>
+    <span class="skt" id="skt">Samen koken</span>
+    <span class="skti">Scherm aan</span>
+  </div>
+  <!-- Setup view -->
+  <div id="sk-setup" class="sk-setup">
+    <div class="sk-setup-card">
+      <div class="sk-setup-title">&#127860; Wanneer wil je eten?</div>
+      <div class="sk-time-row">
+        <span class="sk-time-label">Eettijd</span>
+        <input type="time" id="sk-eettime" class="sk-time-input" value="18:30"/>
+      </div>
+    </div>
+    <div class="sk-setup-card">
+      <div class="sk-setup-title">&#9201; Starttijden</div>
+      <div id="sk-starttimes"></div>
+    </div>
+    <button class="sk-start-btn" onclick="startSamenKoken()">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="18" height="18"><circle cx="12" cy="12" r="10"/><path d="M10 8l6 4-6 4V8z" fill="currentColor" stroke="none"/></svg>
+      Start kookstand
+    </button>
+  </div>
+  <!-- Kookstand view -->
+  <div id="sk-cook" class="hide" style="flex:1;overflow:hidden;display:flex;flex-direction:column">
+    <div id="sk-cols" style="--sk-count:2"></div>
+    <div style="background:#fff;border-top:1px solid var(--br);padding:.75rem 1.25rem;flex-shrink:0;text-align:center">
+      <button onclick="exitSamenKoken()" style="background:var(--bp);border:1px solid var(--br);color:var(--tx);border-radius:8px;padding:.6rem 1.5rem;font-size:.85rem;font-weight:600;cursor:pointer;font-family:'DM Sans',sans-serif">&#10003; Klaar met koken</button>
+    </div>
+  </div>
+</div>
+
+<!-- SAMEN KOKEN BAR (selectiemodus) -->
+<div class="sk-bar hide" id="sk-bar">
+  <div class="sk-info"><span id="sk-count-label">0</span> recepten geselecteerd</div>
+  <div class="sk-btns">
+    <button class="sk-cancel" onclick="cancelSelectMode()">Annuleer</button>
+    <button class="sk-start" onclick="openSamenKokenSetup()" id="sk-start-btn">&#9654; Samen koken</button>
+  </div>
 </div>
 
 <!-- COOK MODE -->
@@ -772,7 +879,7 @@ function setDbStatus(ok) {
 
 // -- SCREENS ---------------------------
 function showMain() {
-  ['sp','dt','ck'].forEach(function(id){ hide(id); });
+  ['sp','dt','ck','sk'].forEach(function(id){ hide(id); });
   show('mn');
   stopWakeLock();
   stopTimer();
@@ -815,6 +922,17 @@ function renderList() {
     if (!r.name) return '';
     var em = r.emoji || CE[r.category] || '&#127860;';
     var meta = (r.category || 'overig') + (r.time ? ' - ' + r.time + ' min' : '');
+    var isSel = skSelected.indexOf(r.id) > -1;
+    if (skSelectMode) {
+      return '<div class="rc' + (isSel ? ' sel' : '') + '" style="animation-delay:' + (i * 0.03) + 's" onclick="toggleSkSelect(\'' + r.id + '\')">' +
+        '<div class="rc-cb' + (isSel ? ' checked' : '') + '">' + (isSel ? '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg>' : '') + '</div>' +
+        '<span class="re">' + em + '</span>' +
+        '<div class="ri">' +
+          '<div class="rn">' + r.name + '</div>' +
+          '<div class="rm">' + meta + '</div>' +
+        '</div>' +
+      '</div>';
+    }
     return '<div class="rc" style="animation-delay:' + (i * 0.03) + 's">' +
       '<span class="re" onclick="showDetail(\'' + r.id + '\')">' + em + '</span>' +
       '<div class="ri" onclick="showDetail(\'' + r.id + '\')">' +
@@ -2164,6 +2282,231 @@ function _discardGen() {
 }
 
 // -- INIT ------------------------------
+// -- SAMEN KOKEN ----------------------
+var skSelectMode = false;
+var skSelected = [];
+var skTimers = {};
+var skStepIdx = {};
+
+function enterSelectMode() {
+  skSelectMode = true;
+  skSelected = [];
+  renderList();
+  updateSkBar();
+  document.getElementById('sk-bar').classList.remove('hide');
+}
+
+function cancelSelectMode() {
+  skSelectMode = false;
+  skSelected = [];
+  renderList();
+  document.getElementById('sk-bar').classList.add('hide');
+}
+
+function toggleSkSelect(id) {
+  var idx = skSelected.indexOf(id);
+  if (idx > -1) {
+    skSelected.splice(idx, 1);
+  } else if (skSelected.length < 3) {
+    skSelected.push(id);
+  } else {
+    toast('Maximaal 3 recepten', 'er');
+    return;
+  }
+  updateSkBar();
+  renderList();
+}
+
+function updateSkBar() {
+  var n = skSelected.length;
+  document.getElementById('sk-count-label').textContent = n;
+  var btn = document.getElementById('sk-start-btn');
+  if (btn) btn.disabled = n < 2;
+  if (btn) btn.style.opacity = n < 2 ? '.5' : '1';
+}
+
+function openSamenKokenSetup() {
+  if (skSelected.length < 2) return;
+  // Set default eettijd to 1hr from now
+  var now = new Date();
+  now.setHours(now.getHours() + 1, 0, 0, 0);
+  var hh = String(now.getHours()).padStart(2, '0');
+  var mm2 = String(now.getMinutes()).padStart(2, '0');
+  document.getElementById('sk-eettime').value = hh + ':' + mm2;
+  // Hide main, show samen koken setup
+  hide('mn');
+  document.getElementById('sk-bar').classList.add('hide');
+  document.getElementById('sk-setup').classList.remove('hide');
+  document.getElementById('sk-cook').classList.add('hide');
+  show('sk');
+  document.getElementById('skt').textContent = 'Samen koken';
+  // Attach input listener
+  document.getElementById('sk-eettime').oninput = calcStartTimes;
+  calcStartTimes();
+  requestWakeLock();
+}
+
+function calcStartTimes() {
+  var eetVal = document.getElementById('sk-eettime').value;
+  if (!eetVal) return;
+  var parts = eetVal.split(':');
+  var eetMin = parseInt(parts[0]) * 60 + parseInt(parts[1]);
+  var html = skSelected.map(function(id) {
+    var r = recipes.find(function(x){ return x.id == id; });
+    if (!r) return '';
+    var dur = parseInt(r.time) || 30;
+    var startMin = eetMin - dur;
+    if (startMin < 0) startMin += 24 * 60;
+    var sh = String(Math.floor(startMin / 60) % 24).padStart(2, '0');
+    var sm = String(startMin % 60).padStart(2, '0');
+    var em = r.emoji || CE[r.category] || '🍽️';
+    return '<div class="sk-start-row">' +
+      '<div class="sk-start-name">' + em + ' ' + r.name + '</div>' +
+      '<div class="sk-start-time">' + sh + ':' + sm + '</div>' +
+    '</div>';
+  }).join('');
+  document.getElementById('sk-starttimes').innerHTML = html;
+}
+
+function startSamenKoken() {
+  // Build columns
+  var eetVal = document.getElementById('sk-eettime').value;
+  var parts = eetVal.split(':');
+  var eetMin = parseInt(parts[0]) * 60 + parseInt(parts[1]);
+  var sh = String(Math.floor(eetMin / 60) % 24).padStart(2, '0');
+  var sm = String(eetMin % 60).padStart(2, '0');
+  document.getElementById('skt').textContent = 'Klaar om ' + sh + ':' + sm;
+
+  // Init step indices and timers
+  skStepIdx = {};
+  skTimers = {};
+  skSelected.forEach(function(id){ skStepIdx[id] = 0; });
+
+  var count = skSelected.length;
+  document.getElementById('sk-cols').style.setProperty('--sk-count', count);
+
+  document.getElementById('sk-setup').classList.add('hide');
+  document.getElementById('sk-cook').classList.remove('hide');
+  renderSkCols();
+}
+
+function renderSkCols() {
+  var cols = document.getElementById('sk-cols');
+  cols.innerHTML = skSelected.map(function(id) {
+    var r = recipes.find(function(x){ return x.id == id; });
+    if (!r) return '';
+    var f = 1; // no scaling in samen koken for simplicity
+    var steps = r.steps || [];
+    var idx = skStepIdx[id] || 0;
+    var total = steps.length;
+    var em = r.emoji || CE[r.category] || '🍽️';
+    var timer = skTimers[id] || { display: '--:--', running: false };
+
+    var curStep = idx < total ? steps[idx] : null;
+    var nxtStep = idx + 1 < total ? steps[idx + 1] : null;
+
+    var bodyHtml = '';
+    if (curStep) {
+      bodyHtml += '<div class="sk-step-cur">' +
+        '<div class="sk-step-num">Stap ' + (idx+1) + ' / ' + total + '</div>' +
+        '<div class="sk-step-txt">' + curStep + '</div>' +
+      '</div>';
+    }
+    if (nxtStep) {
+      bodyHtml += '<div class="sk-step-next">' +
+        '<div class="sk-step-num">Volgende</div>' +
+        '<div class="sk-step-txt">' + nxtStep + '</div>' +
+      '</div>';
+    }
+    if (!curStep) {
+      bodyHtml = '<div class="sk-waiting-msg">&#10003; Klaar!</div>';
+    }
+
+    // Timer block
+    bodyHtml += '<div style="background:var(--bp);border:1px solid var(--br);border-radius:8px;padding:.5rem .65rem;margin-top:.4rem;display:flex;align-items:center;justify-content:space-between">' +
+      '<div style="font-family:Playfair Display,serif;font-size:1.1rem;font-weight:700;color:var(--bd)" id="skt-disp-' + id + '">' + timer.display + '</div>' +
+      '<button onclick="toggleSkTimer(\'' + id + '\')" id="skt-btn-' + id + '" style="background:var(--or);color:#fff;border:none;border-radius:6px;padding:.25rem .55rem;font-size:.75rem;font-weight:600;cursor:pointer">' + (timer.running ? '⏸' : '▶') + '</button>' +
+    '</div>';
+
+    var navHtml = '';
+    if (idx > 0) navHtml += '<button class="sk-nav-prev" onclick="skNav(\'' + id + '\',-1)">‹ Vorige</button>';
+    if (idx < total - 1) navHtml += '<button class="sk-nav-next" onclick="skNav(\'' + id + '\',1)">Volgende ›</button>';
+    else navHtml += '<button class="sk-nav-done" onclick="skColDone(\'' + id + '\')">&#10003; Klaar</button>';
+
+    return '<div class="sk-col">' +
+      '<div class="sk-col-head">' +
+        '<div class="sk-col-emoji">' + em + '</div>' +
+        '<div class="sk-col-name">' + r.name + '</div>' +
+        '<div class="sk-col-timer" id="skt-head-' + id + '">' + timer.display + '</div>' +
+      '</div>' +
+      '<div class="sk-col-body">' + bodyHtml + '</div>' +
+      '<div class="sk-col-nav">' + navHtml + '</div>' +
+    '</div>';
+  }).join('');
+}
+
+function skNav(id, dir) {
+  var r = recipes.find(function(x){ return x.id == id; });
+  if (!r) return;
+  var total = (r.steps || []).length;
+  skStepIdx[id] = Math.max(0, Math.min(total - 1, (skStepIdx[id] || 0) + dir));
+  stopSkTimer(id);
+  renderSkCols();
+}
+
+function skColDone(id) {
+  stopSkTimer(id);
+  skStepIdx[id] = (recipes.find(function(x){ return x.id == id; }) || {steps:[]}).steps.length;
+  renderSkCols();
+}
+
+function toggleSkTimer(id) {
+  if (skTimers[id] && skTimers[id].running) {
+    stopSkTimer(id);
+  } else {
+    startSkTimer(id);
+  }
+}
+
+function startSkTimer(id) {
+  stopSkTimer(id);
+  if (!skTimers[id]) skTimers[id] = { secs: 0, display: '00:00', running: false };
+  skTimers[id].running = true;
+  skTimers[id].secs = skTimers[id].secs || 0;
+  var btn = document.getElementById('skt-btn-' + id);
+  if (btn) btn.textContent = '⏸';
+  skTimers[id].interval = setInterval(function() {
+    skTimers[id].secs++;
+    var m = Math.floor(skTimers[id].secs / 60);
+    var s = skTimers[id].secs % 60;
+    var disp = (m < 10 ? '0' : '') + m + ':' + (s < 10 ? '0' : '') + s;
+    skTimers[id].display = disp;
+    var el = document.getElementById('skt-disp-' + id);
+    var elh = document.getElementById('skt-head-' + id);
+    if (el) el.textContent = disp;
+    if (elh) elh.textContent = disp;
+  }, 1000);
+}
+
+function stopSkTimer(id) {
+  if (skTimers[id] && skTimers[id].interval) {
+    clearInterval(skTimers[id].interval);
+    skTimers[id].interval = null;
+    skTimers[id].running = false;
+  }
+  var btn = document.getElementById('skt-btn-' + id);
+  if (btn) btn.textContent = '▶';
+}
+
+function exitSamenKoken() {
+  // Stop all timers
+  skSelected.forEach(function(id){ stopSkTimer(id); });
+  stopWakeLock();
+  hide('sk');
+  cancelSelectMode();
+  show('mn');
+}
+
 // -- AUTH --------------------------------
 function doLogin() {
   var email = document.getElementById('lg-email').value.trim();

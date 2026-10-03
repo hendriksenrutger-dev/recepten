@@ -1,4 +1,4 @@
-const CACHE = 'cucina-v46';
+const CACHE = 'cucina-v47';
 const SCOPE = '/recepten/';
 const ASSETS = ['/recepten/','/recepten/index.html','/recepten/manifest.json','/recepten/icon-192.png','/recepten/icon-512.png'];
 
@@ -10,8 +10,7 @@ self.addEventListener('install', e => {
 self.addEventListener('activate', e => {
   e.waitUntil(
     caches.keys().then(keys =>
-      // Alleen eigen caches opruimen, nooit die van andere apps op hetzelfde adres
-      Promise.all(keys.filter(k => k.startsWith('cucina-') && k !== CACHE).map(k => caches.delete(k)))
+      Promise.all(keys.filter(k => k !== CACHE).map(k => caches.delete(k)))
     )
   );
   self.clients.claim();
