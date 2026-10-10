@@ -155,13 +155,9 @@ html,body{height:100%;background:var(--cr);color:var(--tx);font-family:'DM Sans'
 .notes-list{list-style:none;display:flex;flex-direction:column;gap:.3rem;margin-bottom:.6rem}
 .notes-list li{display:flex;align-items:flex-start;gap:.45rem;font-size:.85rem;line-height:1.5;padding:.25rem 0;border-bottom:1px solid var(--br)}
 .notes-list li::before{content:'•';color:var(--or);font-size:1.1rem;line-height:1.3;flex-shrink:0}
-.notes-list li span{flex:1;cursor:pointer;border-radius:4px;padding:.05rem .2rem;margin-left:-.2rem;transition:background .15s}
-.notes-list li span:hover{background:var(--bl)}
-.notes-list li .notes-edit-wrap{flex:1;display:flex;gap:.3rem}
-.notes-list li .notes-edit-wrap input{flex:1;background:var(--bp);border:1px solid var(--bm);border-radius:6px;padding:.2rem .5rem;font-size:.82rem;font-family:'DM Sans',sans-serif;color:var(--tx);outline:none}
-.notes-list li .notes-save{background:var(--bd);color:var(--wh);border:none;border-radius:6px;padding:.2rem .55rem;font-size:.75rem;font-weight:600;cursor:pointer}
-.notes-list li .notes-save:hover{background:var(--or)}
-.notes-list li .notes-cancel{background:none;border:1px solid var(--br);border-radius:6px;padding:.2rem .45rem;font-size:.75rem;cursor:pointer;color:var(--tm)}
+.notes-text{flex:1;cursor:text;border-radius:4px;padding:.1rem .25rem;outline:none;min-width:0;word-break:break-word}
+.notes-text:hover{background:var(--bl)}
+.notes-text:focus{background:var(--bp);border:1px solid var(--bm);cursor:text}
 .notes-del{background:none;border:none;color:var(--tl);cursor:pointer;font-size:.85rem;padding:0 .15rem;line-height:1;flex-shrink:0;transition:color .15s}
 .notes-del:hover{color:#C62828}
 .notes-add{display:flex;gap:.4rem;margin-top:.35rem}
@@ -1061,20 +1057,44 @@ function renderDetail(r) {
 }
 
 // -- NOTES / TIPS ---------------------
+function _notesItem(rid, n, idx) {
+  var safe = n.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+  return '<li>' +
+    '<span class="notes-text" contenteditable="true" ' +
+      'data-rid="' + rid + '" data-idx="' + idx + '" ' +
+      'onblur="saveNoteEdit(this)" ' +
+      'onkeydown="if(event.key===\'Enter\'){event.preventDefault();this.blur()}">' +
+      safe +
+    '</span>' +
+    '<button class="notes-del" onmousedown="event.preventDefault()" onclick="removeNote(\'' + rid + '\',' + idx + ')" title="Verwijder">×</button>' +
+  '</li>';
+}
+
 function _notesHtml(r) {
   var id = r.id;
   var notes = r.notes || [];
-  var items = notes.map(function(n, idx) {
-    return '<li><span>' + n + '</span><button class="notes-del" onclick="removeNote(\'' + id + '\',' + idx + ')" title="Verwijder">×</button></li>';
-  }).join('');
+  var items = notes.map(function(n, idx){ return _notesItem(id, n, idx); }).join('');
   return '<div class="notes-sec">' +
     '<div class="stit">Tips &amp; aantekeningen</div>' +
-    (notes.length ? '<ul class="notes-list" id="notes-list-' + id + '">' + items + '</ul>' : '<ul class="notes-list" id="notes-list-' + id + '"></ul>') +
+    '<ul class="notes-list" id="notes-list-' + id + '">' + items + '</ul>' +
     '<div class="notes-add">' +
       '<input class="notes-inp" id="notes-inp-' + id + '" type="text" placeholder="Voeg tip toe…" onkeydown="if(event.key===\'Enter\')addNote(\'' + id + '\')" />' +
       '<button class="notes-btn" onclick="addNote(\'' + id + '\')">+ Toevoegen</button>' +
     '</div>' +
   '</div>';
+}
+
+function saveNoteEdit(el) {
+  var txt = (el.textContent || '').trim();
+  var rid = el.dataset.rid;
+  var idx = parseInt(el.dataset.idx);
+  if (!txt || !rid || isNaN(idx)) return;
+  var r = recipes.find(function(x){ return x.id == rid; });
+  if (!r) return;
+  var notes = (r.notes || []).slice();
+  if (notes[idx] === txt) return;
+  notes[idx] = txt;
+  patchDB(rid, { notes: notes });
 }
 
 function addNote(id) {
@@ -1088,7 +1108,8 @@ function addNote(id) {
   notes.push(txt);
   patchDB(id, { notes: notes });
   inp.value = '';
-  _refreshNotesList(id);
+  var ul = document.getElementById('notes-list-' + id);
+  if (ul) ul.innerHTML = notes.map(function(n, idx){ return _notesItem(id, n, idx); }).join('');
 }
 
 function removeNote(id, idx) {
@@ -1097,17 +1118,8 @@ function removeNote(id, idx) {
   var notes = (r.notes || []).slice();
   notes.splice(idx, 1);
   patchDB(id, { notes: notes.length ? notes : null });
-  _refreshNotesList(id);
-}
-
-function _refreshNotesList(id) {
-  var r = recipes.find(function(x){ return x.id == id; });
-  if (!r) return;
   var ul = document.getElementById('notes-list-' + id);
-  if (!ul) return;
-  ul.innerHTML = (r.notes || []).map(function(n, idx) {
-    return '<li><span>' + n + '</span><button class="notes-del" onclick="removeNote(\'' + id + '\',' + idx + ')" title="Verwijder">×</button></li>';
-  }).join('');
+  if (ul) ul.innerHTML = notes.map(function(n, i){ return _notesItem(id, n, i); }).join('');
 }
 
 function adjSrv(d) {
