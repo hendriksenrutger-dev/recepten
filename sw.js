@@ -1,4 +1,4 @@
-const CACHE = 'cucina-v57';
+const CACHE = 'cucina-v58';
 const SCOPE = '/recepten/';
 const ASSETS = ['/recepten/','/recepten/index.html','/recepten/manifest.json','/recepten/icon-192.png','/recepten/icon-512.png'];
 
@@ -10,7 +10,7 @@ self.addEventListener('install', e => {
 self.addEventListener('activate', e => {
   e.waitUntil(
     caches.keys().then(keys =>
-      Promise.all(keys.filter(k => k !== CACHE).map(k => caches.delete(k)))
+      Promise.all(keys.filter(k => k.startsWith('cucina-') && k !== CACHE).map(k => caches.delete(k)))   // alleen eigen caches, niet die van Boodschappen
     )
   );
   self.clients.claim();

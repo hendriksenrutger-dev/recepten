@@ -4,7 +4,7 @@
 <meta charset="UTF-8"/>
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover"/>
 <meta name="theme-color" content="#1A3A5C"/>
-<meta name="version" content="v57"/>
+<meta name="version" content="v58"/>
 <meta name="apple-mobile-web-app-capable" content="yes"/>
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"/>
 <meta name="apple-mobile-web-app-title" content="Cucina"/>
@@ -265,8 +265,14 @@ textarea{resize:vertical;min-height:88px}
 .wt-rij{display:flex;align-items:center;gap:.75rem;width:100%;min-height:48px;padding:.55rem .25rem;background:none;border:none;border-bottom:1px solid var(--br);font-family:'DM Sans',sans-serif;font-size:.92rem;color:var(--tx);text-align:left;cursor:pointer}
 .wt-rij:last-child{border-bottom:none}
 .wt-vak{width:22px;height:22px;border-radius:6px;border:2px solid var(--bd);background:var(--bd);color:var(--wh);display:flex;align-items:center;justify-content:center;flex-shrink:0}
-.wt-rij.uit{color:var(--tl);text-decoration:line-through}
+.wt-rij.uit{color:var(--tl)}
+.wt-rij.uit .wt-tekst{text-decoration:line-through}
 .wt-rij.uit .wt-vak{background:none;border-color:var(--br);color:transparent}
+.wt-label{margin-left:auto;font-size:12px;font-weight:600;padding:3px 8px;border-radius:6px;white-space:nowrap;flex-shrink:0}
+.wt-label.voorraad{background:#E4ECE8;color:#2F5D50}
+.wt-label.bijna{background:#FBEBD9;color:#8A4410}
+.kr-schakel{display:flex;align-items:flex-start;gap:.75rem;padding:.75rem 0;border-top:1px solid var(--br);cursor:pointer}
+.kr-schakel input{width:20px;height:20px;margin:.1rem 0 0;flex-shrink:0;accent-color:var(--bd)}
 .bs2{background:var(--bp);color:var(--tx);border:1px solid var(--br);padding:.75rem 1.1rem;border-radius:8px;font-family:'DM Sans',sans-serif;font-size:.88rem;cursor:pointer}
 .ai{background:rgba(46,109,164,.08);border:1px solid rgba(46,109,164,.2);border-radius:8px;padding:.65rem .85rem;font-size:.83rem;color:var(--bm);display:flex;align-items:center;gap:.5rem}
 .ai.hide{display:none}
@@ -707,6 +713,7 @@ textarea{resize:vertical;min-height:88px}
     <div class="mhd"><span class="mht">Instellingen</span><button class="mc" onclick="closeMod('mset')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6 6 18M6 6l12 12"/></svg></button></div>
     <div class="mb">
       <div class="fg"><label>Anthropic API Key</label><input type="text" id="sak" placeholder="sk-ant-..."/><small style="font-size:.73rem;color:var(--tl)">Voor foto-scan, URL import en voedingswaarden.</small></div>
+      <label class="kr-schakel"><input type="checkbox" id="skruid"/><span><span style="display:block;font-size:.88rem;font-weight:500;color:var(--tx)">Kruidenvoorraad uit Boodschappen</span><span style="display:block;font-size:.73rem;color:var(--tl);margin-top:.15rem">Tikt kruiden weg die je thuis nog hebt. Geldt alleen voor dit apparaat.</span></span></label>
       <div style="padding:.5rem 0;border-top:1px solid var(--br)">
         <div style="display:flex;justify-content:space-between;align-items:center;padding:.6rem 0">
           <div><div style="font-size:.88rem;font-weight:500;color:var(--tx)">Database</div><div style="font-size:.73rem;color:var(--tl)" id="dbst">Verbinden...</div></div>
@@ -1454,7 +1461,7 @@ function stripIng(ing) {
 }
 
 var BOODSCHAPPEN_URL = 'https://hendriksenrutger-dev.github.io/Boodschappen/';
-var _wt = null;   // { recept_id, recept_naam, items: [{orig, aan}] }
+var _wt = null;   // { recept_id, recept_naam, aangeraakt, items: [{orig, aan, label}] }
 
 function addToShopping(id) {
   var r = recipes.find(function(x){ return x.id == id; });
@@ -1465,10 +1472,56 @@ function addToShopping(id) {
 }
 
 function openWegtik(receptId, receptNaam, ingredienten) {
-  _wt = { recept_id: receptId, recept_naam: receptNaam, items: ingredienten.map(function(t){ return { orig: String(t), aan: true }; }) };
+  _wt = { recept_id: receptId, recept_naam: receptNaam, aangeraakt: false, items: ingredienten.map(function(t){ return { orig: String(t), aan: true, label: '' }; }) };
   document.getElementById('wt-titel').textContent = receptNaam;
   renderWegtik();
   openMod('mwt');
+  if (!kruidKoppelingAan()) return;   // standaard uit; per apparaat aan te zetten in Instellingen
+  var wt = _wt;
+  haalKruiden().then(function(kruiden) {
+    if (_wt !== wt || wt.aangeraakt || !kruiden.length) return;   // intussen gesloten of al zelf aangepast
+    wt.items.forEach(function(it) {
+      var k = kruidVoorIngredient(kruiden, it.orig);
+      if (!k) return;
+      if (k.stand === 'bijna' || k.stand === 'op') { it.aan = true; it.label = k.stand === 'op' ? 'op' : 'bijna op'; }
+      else if ((k.aantal || 0) > 0) { it.aan = false; it.label = 'op voorraad'; }
+    });
+    renderWegtik();
+  });
+}
+
+// -- KRUIDENVOORRAAD (uit de boodschappen-app) --------
+// Staat in boodschappen_instellingen onder 'kruiden'; zelfde regels als in de boodschappen-app.
+// Alleen als de koppeling op dit apparaat aan staat (niet bij je dochter: andere keuken).
+var KRUID_KOPPELING = 'cucina_kruiden_koppeling';
+function kruidKoppelingAan() { try { return localStorage.getItem(KRUID_KOPPELING) === '1'; } catch(e) { return false; } }
+var KRUID_VERS = /\b(vers|verse|takjes?|bosjes?|bos|blaadjes|handje|handvol)\b/;
+var KRUID_GROENTE = ['paprika','gember','knoflook','ui','uien','chili','citroen','limoen','koriander','peterselie','basilicum','munt','dille','bieslook','tijm','rozemarijn','salie','selderij','venkel','mosterd'];
+var KRUID_ACHTER = /^(poeder|zaad|zaadjes|korrels|vlokken|blad|blaadjes|gedroogd|gemalen)$/;
+function _woordjes(s) { return String(s || '').toLowerCase().split(/[^a-z0-9\u00e0-\u00ff']+/).filter(Boolean); }
+function kruidPast(kruidNaam, tekst) {
+  var kw = _woordjes(kruidNaam), tw = _woordjes(tekst);
+  if (!kw.length || !tw.length || KRUID_VERS.test(String(tekst).toLowerCase())) return false;
+  if (kw.every(function(w){ return tw.indexOf(w) >= 0; })) return true;
+  if (tw.length === 1 && tw[0].length >= 4 && KRUID_GROENTE.indexOf(tw[0]) < 0 &&
+      kw.some(function(w){ return w.indexOf(tw[0]) === 0 && KRUID_ACHTER.test(w.slice(tw[0].length)); })) return true;
+  return false;
+}
+function kruidVoorIngredient(kruiden, orig) {
+  var naam = ontleedIngredient(orig).naam;
+  return kruiden.filter(function(k){ return kruidPast(k.naam, naam); }).sort(function(a, b){ return b.naam.length - a.naam.length; })[0] || null;
+}
+function haalKruiden() {
+  return verseToken().then(function(tk) {
+    var ctrl = window.AbortController ? new AbortController() : null;
+    if (ctrl) setTimeout(function(){ ctrl.abort(); }, 4000);
+    return fetch(SB_URL + '/rest/v1/boodschappen_instellingen?sleutel=eq.kruiden&select=waarde', {
+      headers: { 'apikey': SB_KEY, 'Authorization': 'Bearer ' + tk }, signal: ctrl ? ctrl.signal : undefined
+    });
+  }).then(function(r){ return r.ok ? r.json() : []; }).then(function(rijen) {
+    var k = rijen && rijen[0] ? JSON.parse(rijen[0].waarde || '[]') : [];
+    return Array.isArray(k) ? k : [];
+  }).catch(function(){ return []; });
 }
 
 function renderWegtik() {
@@ -1476,7 +1529,8 @@ function renderWegtik() {
   var vink = '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>';
   document.getElementById('wt-lijst').innerHTML = _wt.items.map(function(it, n) {
     var t = String(it.orig).replace(/[&<>"]/g, function(c){ return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]; });
-    return '<button class="wt-rij' + (it.aan ? '' : ' uit') + '" onclick="wtWissel(' + n + ')" aria-pressed="' + it.aan + '"><span class="wt-vak">' + vink + '</span><span>' + t + '</span></button>';
+    var lab = it.label ? '<span class="wt-label ' + (it.label === 'op voorraad' ? 'voorraad' : 'bijna') + '">' + it.label + '</span>' : '';
+    return '<button class="wt-rij' + (it.aan ? '' : ' uit') + '" onclick="wtWissel(' + n + ')" aria-pressed="' + it.aan + '"><span class="wt-vak">' + vink + '</span><span class="wt-tekst">' + t + '</span>' + lab + '</button>';
   }).join('');
   var aantal = _wt.items.filter(function(i){ return i.aan; }).length;
   var knop = document.getElementById('wt-knop');
@@ -1487,6 +1541,7 @@ function renderWegtik() {
 function wtWissel(n) {
   if (!_wt || !_wt.items[n]) return;
   _wt.items[n].aan = !_wt.items[n].aan;
+  _wt.aangeraakt = true;
   renderWegtik();
 }
 
@@ -2014,11 +2069,13 @@ function openMod(id) { document.getElementById(id).classList.remove('hide'); }
 function closeMod(id) { document.getElementById(id).classList.add('hide'); }
 function openSettings() {
   document.getElementById('sak').value = getAK();
+  document.getElementById('skruid').checked = kruidKoppelingAan();
   openMod('mset');
 }
 function saveSettings() {
   var k = (document.getElementById('sak').value || '').trim();
   if (k) localStorage.setItem(AK, k); else localStorage.removeItem(AK);
+  try { if (document.getElementById('skruid').checked) localStorage.setItem(KRUID_KOPPELING, '1'); else localStorage.removeItem(KRUID_KOPPELING); } catch(e) {}
   closeMod('mset');
   toast('Opgeslagen', 'ok');
 }
