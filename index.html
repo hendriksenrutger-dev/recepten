@@ -4,7 +4,7 @@
 <meta charset="UTF-8"/>
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover"/>
 <meta name="theme-color" content="#1A3A5C"/>
-<meta name="version" content="v59"/>
+<meta name="version" content="v60"/>
 <meta name="apple-mobile-web-app-capable" content="yes"/>
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"/>
 <meta name="apple-mobile-web-app-title" content="Cucina"/>
@@ -749,6 +749,9 @@ textarea{resize:vertical;min-height:88px}
 var SB_URL = 'https://kegpsbtlfnqxrwiaeovc.supabase.co';
 var SB_KEY = 'sb_publishable_4afcXICjvnZHcjxruVoMRA_PKFBp1hp';
 var AK = 'cucina_anthropic_key';
+// Claude-modellen: hier op één plek bijwerken
+var AI_MODEL = 'claude-sonnet-5-5';      // recepten lezen, bedenken, wijn, chat
+var AI_MODEL_SNEL = 'claude-haiku-5-5';  // voedingswaarden (snel en goedkoop)
 var SK = 'cucina_shopping';
 var SESSION_KEY = 'cucina_session';
 
@@ -1175,34 +1178,41 @@ function scaleIng(ing, f) {
   if (f === 1) return ing;
   var letters = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
   var protected_ = [];
-  function protect(m) { protected_.push(m); return '§PH' + letters[protected_.length - 1] + '§'; }
-  // Protect ranges: "8 tot 10 minuten"
-  var rangePattern = /(\d+([.,]\d+)?)\s*(tot|à|a|-)\s*(\d+([.,]\d+)?)\s*(°C|°F|°|graden|minuten|min\.?|uur|uren|seconden|sec\.?)/gi;
-  var temp = ing.replace(rangePattern, protect);
-  // Protect single numbers followed by time/temp units
-  var skipPattern = /(\d+([.,]\d+)?)\s*(°C|°F|°|graden|minuten|min\.?|uur|uren|seconden|sec\.?)/gi;
-  temp = temp.replace(skipPattern, protect);
-  // Scale fractions like 1/2, 3/4 as a unit
-  temp = temp.replace(/(\d+)\/(\d+)/g, function(m, a, b) {
-    var n = parseInt(a) / parseInt(b);
-    var s = Math.round(n * f * 100) / 100;
-    // Try to express as simple fraction
-    if (s === 0.25) return '1/4';
-    if (s === 0.5) return '1/2';
-    if (s === 0.75) return '3/4';
-    if (s === 1/3) return '1/3';
-    if (s === 2/3) return '2/3';
-    return String(s).replace('.',',');
+  // Plaatshouder zonder cijfers, zodat hij niet zelf geschaald wordt
+  function protect(m) { var i = protected_.push(m) - 1; return '§PH' + letters[Math.floor(i / 26) % 26] + letters[i % 26] + '§'; }
+  // Een getal: "1 1/2", "1/2", "1,5" of "2"
+  var NUM = '(?:\\d+\\s+\\d+\\/\\d+|\\d+\\/\\d+|\\d+(?:[.,]\\d+)?)';
+  var UNIT = '(?:°C|°F|°|graden|minuten|min\\.?|uur|uren|seconden|sec\\.?)';
+  // Tijden en temperaturen niet schalen: "8 tot 10 minuten", "180 °C", "1/2 uur"
+  var temp = ing.replace(new RegExp(NUM + '\\s*(?:tot|à|a|-)\\s*' + NUM + '\\s*' + UNIT, 'gi'), protect);
+  temp = temp.replace(new RegExp(NUM + '\\s*' + UNIT, 'gi'), protect);
+  // Breuken (ook "1 1/2") als geheel schalen en als breuk teruggeven
+  temp = temp.replace(/(?:(\d+)\s+)?(\d+)\/(\d+)/g, function(m, heel, a, b) {
+    if (!parseInt(b)) return m;
+    var v = ((heel ? parseInt(heel) : 0) + parseInt(a) / parseInt(b)) * f;
+    return protect(mooieBreuk(v));
   });
-  // Scale remaining plain numbers
+  // Overige getallen schalen
   temp = temp.replace(/(\d+([.,]\d+)?)/g, function(m) {
     var n = parseFloat(m.replace(',','.'));
     var s = Math.round(n * f * 10) / 10;
     return String(s).replace('.',',');
   });
-  // Restore protected values
-  temp = temp.replace(/§PH([A-Z])§/g, function(m, c) { return protected_[letters.indexOf(c)]; });
+  // Beschermde stukken terugzetten
+  temp = temp.replace(/§PH([A-Z])([A-Z])§/g, function(m, c1, c2) { return protected_[letters.indexOf(c1) * 26 + letters.indexOf(c2)]; });
   return temp;
+}
+
+// 0.75 -> "3/4", 1.5 -> "1 1/2", 2 -> "2", 0.6 -> "0,6"
+function mooieBreuk(v) {
+  var heel = Math.floor(v + 0.02);
+  var rest = v - heel;
+  if (Math.abs(rest) < 0.02) return String(heel);
+  var breuken = [[1/4, '1/4'], [1/3, '1/3'], [1/2, '1/2'], [2/3, '2/3'], [3/4, '3/4']];
+  for (var i = 0; i < breuken.length; i++) {
+    if (Math.abs(rest - breuken[i][0]) < 0.02) return (heel ? heel + ' ' : '') + breuken[i][1];
+  }
+  return String(Math.round(v * 10) / 10).replace('.', ',');
 }
 
 function toggleIngCheck(li) { li.classList.toggle('ck'); }
@@ -1286,7 +1296,7 @@ function calcNutr(id) {
     method: 'POST',
     headers: { 'Content-Type': 'application/json', 'x-api-key': key, 'anthropic-version': '2023-06-01', 'anthropic-dangerous-direct-browser-access': 'true' },
     body: JSON.stringify({
-      model: 'claude-haiku-4-5-20251001', max_tokens: 250,
+      model: AI_MODEL_SNEL, max_tokens: 4250, output_config: { effort: 'low' },
       system: 'Je bent een voedingsdeskundige. Reageer UITSLUITEND met een geldig JSON object in exact dit formaat, zonder enige andere tekst, uitleg of markdown: {"kcal":number,"protein":number,"carbs":number,"fat":number}. Geen inleiding, geen afsluiting, alleen het JSON object.',
       messages: [{ role: 'user', content: prompt }]
     })
@@ -1747,9 +1757,9 @@ function getWijnAdvies(id, forceRefresh) {
   box.innerHTML = '<div style="background:rgba(139,0,0,.05);border:1px solid rgba(139,0,0,.15);border-radius:var(--ra);padding:.85rem 1rem;margin-bottom:1rem"><div style="display:flex;align-items:center;gap:.5rem;margin-bottom:.5rem"><span style="font-size:1.1rem">&#127863;</span><span style="font-family:Playfair Display,serif;font-size:.9rem;font-weight:700;color:#8B0000">Wijnadvies laden...</span></div><div class="sp2" style="margin:0 auto"></div></div>';
   fetch('https://api.anthropic.com/v1/messages', {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json', 'x-api-key': key, 'anthropic-version': '2023-06-01', 'anthropic-dangerous-direct-browser-access': 'true' },
+    headers: { 'Content-Type': 'application/json', 'x-api-key': key, 'anthropic-version': '2023-06-01', 'anthropic-dangerous-direct-browser-access': 'true', 'anthropic-beta': 'server-side-fallback-2026-07-01' },
     body: JSON.stringify({
-      model: 'claude-sonnet-4-6', max_tokens: 600,
+      model: AI_MODEL, max_tokens: 4600, output_config: { effort: 'low' }, fallbacks: 'default',
       system: 'Je bent een gerenommeerde sommelier. Geef concreet en serieus wijnadvies. Noem specifieke druivenrassen, regio en stijlen. Geen algemene uitspraken. Schrijf in het Nederlands.',
       messages: [{ role: 'user', content: 'Geef wijnadvies bij het gerecht "' + r.name + '" (ingredienten: ' + (r.ingredients||[]).slice(0,6).join(', ') + '). Geef 2-3 concrete wijnsuggesties met druivenras, regio en waarom het past. Hou het beknopt maar serieus.' }]
     })
@@ -1791,9 +1801,9 @@ function getLekkerMet(id, forceRefresh) {
   box.innerHTML = '<div style="background:rgba(46,125,50,.05);border:1px solid rgba(46,125,50,.15);border-radius:var(--ra);padding:.85rem 1rem;margin-bottom:1rem"><div style="display:flex;align-items:center;gap:.5rem;margin-bottom:.5rem"><span style="font-size:1.1rem">&#128523;</span><span style="font-family:Playfair Display,serif;font-size:.9rem;font-weight:700;color:#2E7D32">Lekker met laden...</span></div><div class="sp2" style="margin:0 auto"></div></div>';
   fetch('https://api.anthropic.com/v1/messages', {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json', 'x-api-key': key, 'anthropic-version': '2023-06-01', 'anthropic-dangerous-direct-browser-access': 'true' },
+    headers: { 'Content-Type': 'application/json', 'x-api-key': key, 'anthropic-version': '2023-06-01', 'anthropic-dangerous-direct-browser-access': 'true', 'anthropic-beta': 'server-side-fallback-2026-07-01' },
     body: JSON.stringify({
-      model: 'claude-sonnet-4-6', max_tokens: 500,
+      model: AI_MODEL, max_tokens: 4500, output_config: { effort: 'low' }, fallbacks: 'default',
       system: 'Je bent een culinaire expert. Geef ALLEEN een geldig JSON array terug, geen uitleg, geen markdown. Schrijf in het Nederlands.',
       messages: [{ role: 'user', content: 'Wat past lekker bij "' + r.name + '" (ingredienten: ' + (r.ingredients||[]).slice(0,6).join(', ') + ')? Geef 4 concrete bijgerechten of combinaties. Retourneer ALLEEN een JSON array: [{"name":"naam van het gerecht","desc":"korte uitleg waarom het past"}]' }]
     })
@@ -1861,9 +1871,9 @@ function generateFromSuggestion(name) {
   var rSeed = Math.floor(Math.random() * 9999);
   fetch('https://api.anthropic.com/v1/messages', {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json', 'x-api-key': key, 'anthropic-version': '2023-06-01', 'anthropic-dangerous-direct-browser-access': 'true' },
+    headers: { 'Content-Type': 'application/json', 'x-api-key': key, 'anthropic-version': '2023-06-01', 'anthropic-dangerous-direct-browser-access': 'true', 'anthropic-beta': 'server-side-fallback-2026-07-01' },
     body: JSON.stringify({
-      model: 'claude-sonnet-4-6', max_tokens: 1500,
+      model: AI_MODEL, max_tokens: 5500, output_config: { effort: 'medium' }, fallbacks: 'default',
       system: 'Je bent een professionele kok. Schrijf in het Nederlands. Geef ALLEEN een geldig JSON object terug, geen uitleg, geen markdown.',
       messages: [{ role: 'user', content: 'Maak een volledig recept voor "' + name + '". Inspireer je op de ' + rCuisine + 'e keuken. Seed: ' + rSeed + '. Geef ALLEEN een JSON object terug met velden: name, category (vlees/kip/vis/vegetarisch/pasta/soep/nagerecht/brood/overig), emoji, servings, time, difficulty (Makkelijk/Gemiddeld/Moeilijk), ingredients (array), steps (array).' }]
     })
@@ -1911,10 +1921,10 @@ function importUrl() {
   document.getElementById('urstx').textContent = 'Recept ophalen...';
   fetch('https://api.anthropic.com/v1/messages', {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json', 'x-api-key': key, 'anthropic-version': '2023-06-01', 'anthropic-dangerous-direct-browser-access': 'true' },
+    headers: { 'Content-Type': 'application/json', 'x-api-key': key, 'anthropic-version': '2023-06-01', 'anthropic-dangerous-direct-browser-access': 'true', 'anthropic-beta': 'server-side-fallback-2026-07-01' },
     body: JSON.stringify({
-      model: 'claude-sonnet-4-6', max_tokens: 2000,
-      tools: [{ type: 'web_search_20250305', name: 'web_search' }],
+      model: AI_MODEL, max_tokens: 6000, output_config: { effort: 'medium' }, fallbacks: 'default',
+      tools: [{ type: 'web_search_20260209', name: 'web_search' }],
       messages: [{ role: 'user', content: 'Haal het recept op van deze URL: ' + url + '\n\nGeef UITSLUITEND een JSON object terug:\n{"name":"...","category":"vlees|vis|vegetarisch|bbq|soep|pasta|nagerecht|overig","emoji":"...","servings":4,"time":45,"difficulty":"Makkelijk|Gemiddeld|Moeilijk","ingredients":["..."],"steps":["..."]}' }]
     })
   }).then(function(r){ return r.json(); }).then(function(data) {
@@ -1957,9 +1967,9 @@ function handlePhoto(input) {
     var mt = file.type || 'image/jpeg';
     fetch('https://api.anthropic.com/v1/messages', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'x-api-key': key, 'anthropic-version': '2023-06-01', 'anthropic-dangerous-direct-browser-access': 'true' },
+      headers: { 'Content-Type': 'application/json', 'x-api-key': key, 'anthropic-version': '2023-06-01', 'anthropic-dangerous-direct-browser-access': 'true', 'anthropic-beta': 'server-side-fallback-2026-07-01' },
       body: JSON.stringify({
-        model: 'claude-sonnet-4-6', max_tokens: 2000,
+        model: AI_MODEL, max_tokens: 6000, output_config: { effort: 'medium' }, fallbacks: 'default',
         messages: [{ role: 'user', content: [
           { type: 'image', source: { type: 'base64', media_type: mt, data: b64 } },
           { type: 'text', text: 'Dit is een foto van een handgeschreven recept. Lees het volledig en nauwkeurig uit. Geef UITSLUITEND een JSON object terug:\n{"name":"...","category":"vlees|vis|vegetarisch|bbq|soep|pasta|nagerecht|overig","emoji":"...","servings":4,"time":45,"difficulty":"Makkelijk|Gemiddeld|Moeilijk","ingredients":["..."],"steps":["..."]}' }
@@ -1998,9 +2008,9 @@ function handleFile(input) {
     var b64 = reader.result.split(',')[1];
     fetch('https://api.anthropic.com/v1/messages', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'x-api-key': key, 'anthropic-version': '2023-06-01', 'anthropic-dangerous-direct-browser-access': 'true' },
+      headers: { 'Content-Type': 'application/json', 'x-api-key': key, 'anthropic-version': '2023-06-01', 'anthropic-dangerous-direct-browser-access': 'true', 'anthropic-beta': 'server-side-fallback-2026-07-01' },
       body: JSON.stringify({
-        model: 'claude-sonnet-4-6', max_tokens: 2000,
+        model: AI_MODEL, max_tokens: 6000, output_config: { effort: 'medium' }, fallbacks: 'default',
         messages: [{ role: 'user', content: [
           { type: 'document', source: { type: 'base64', media_type: 'application/pdf', data: b64 } },
           { type: 'text', text: 'Dit PDF bevat een recept. Lees het volledig. Geef ALLEEN dit JSON object terug: {"name":"...","category":"vlees|vis|vegetarisch|bbq|soep|pasta|nagerecht|brood|overig","emoji":"...","servings":4,"time":45,"difficulty":"Makkelijk|Gemiddeld|Moeilijk","ingredients":["..."],"steps":["..."]}' }
@@ -2269,9 +2279,9 @@ function runGenerator() {
 
   fetch('https://api.anthropic.com/v1/messages', {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json', 'x-api-key': key, 'anthropic-version': '2023-06-01', 'anthropic-dangerous-direct-browser-access': 'true' },
+    headers: { 'Content-Type': 'application/json', 'x-api-key': key, 'anthropic-version': '2023-06-01', 'anthropic-dangerous-direct-browser-access': 'true', 'anthropic-beta': 'server-side-fallback-2026-07-01' },
     body: JSON.stringify({
-      model: 'claude-sonnet-4-6', max_tokens: 1500,
+      model: AI_MODEL, max_tokens: 5500, output_config: { effort: 'medium' }, fallbacks: 'default',
       system: 'Je bent een professionele kok. Je prioriteit is altijd een bestaand, beproefd gerecht te kiezen dat past bij de opgegeven ingrediënten. Kies het meest logische en smakelijke gerecht dat mensen kennen. Wees alleen creatief als er geen goed bestaand gerecht past. Geen fusion tenzij het een erkende wereldkeuken is. Alle ingrediënten moeten culinair bij elkaar passen. Schrijf in het Nederlands. Geef ALLEEN een geldig JSON object terug, geen uitleg.',
       messages: [{ role: 'user', content: 'Welk bestaand, lekker gerecht past het best bij deze ingrediënten: ' + input + '? Seed: ' + rSeed + '. Kies een klassiek of bekend gerecht uit een echte keuken. Geef ALLEEN een JSON object terug met velden: name, category (vlees/kip/vis/vegetarisch/pasta/soep/nagerecht/brood/overig), emoji, servings, time, difficulty (Makkelijk/Gemiddeld/Moeilijk), ingredients (array), steps (array).' }]
     })
@@ -2381,8 +2391,8 @@ function _sendGenChat() {
 
   fetch('https://api.anthropic.com/v1/messages', {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json', 'x-api-key': key, 'anthropic-version': '2023-06-01', 'anthropic-dangerous-direct-browser-access': 'true' },
-    body: JSON.stringify({ model: 'claude-sonnet-4-6', max_tokens: 1200, system: systemMsg, messages: messages })
+    headers: { 'Content-Type': 'application/json', 'x-api-key': key, 'anthropic-version': '2023-06-01', 'anthropic-dangerous-direct-browser-access': 'true', 'anthropic-beta': 'server-side-fallback-2026-07-01' },
+    body: JSON.stringify({ model: AI_MODEL, max_tokens: 5200, output_config: { effort: 'medium' }, fallbacks: 'default', system: systemMsg, messages: messages })
   }).then(function(r2){ return r2.json(); }).then(function(data) {
     if (data.error) throw new Error(data.error.message);
     var fullText = (data.content||[]).map(function(b){ return b.text||''; }).join('').trim();
@@ -3204,7 +3214,7 @@ document.getElementById('pf-doc').addEventListener('change', function(){ handleF
 
 // Register service worker
 if ('serviceWorker' in navigator) {
-  navigator.serviceWorker.register('/recepten/sw.js').catch(function(){});
+  navigator.serviceWorker.register('/recepten/sw.js', { updateViaCache: 'none' }).catch(function(){});
 }
 </script>
 <input type="file" id="photo-input" accept="image/*" style="display:none" onchange="onPhotoSelected(event)"/>
