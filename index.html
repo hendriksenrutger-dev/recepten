@@ -1709,15 +1709,18 @@ function compressPhoto(file, maxW, quality, cb) {
 function uploadPhotoToStorage(id, blob) {
   toast('Foto uploaden...', 'ok');
   var filename = id + '.jpg';
-  fetch(SB_URL + '/storage/v1/object/recipe-photos/' + filename, {
-    method: 'POST',
-    headers: {
-      'apikey': SB_KEY,
-      'Authorization': 'Bearer ' + SB_KEY,
-      'Content-Type': 'image/jpeg',
-      'x-upsert': 'true'
-    },
-    body: blob
+  // Uploaden met je login (niet anoniem), zodat alleen ingelogde gebruikers foto's kunnen plaatsen
+  verseToken().then(function(tk) {
+    return fetch(SB_URL + '/storage/v1/object/recipe-photos/' + filename, {
+      method: 'POST',
+      headers: {
+        'apikey': SB_KEY,
+        'Authorization': 'Bearer ' + (tk || SB_KEY),
+        'Content-Type': 'image/jpeg',
+        'x-upsert': 'true'
+      },
+      body: blob
+    });
   }).then(function(r) {
     if (!r.ok) return r.text().then(function(t){ throw new Error(t); });
     var url = SB_URL + '/storage/v1/object/public/recipe-photos/' + filename + '?t=' + Date.now();
