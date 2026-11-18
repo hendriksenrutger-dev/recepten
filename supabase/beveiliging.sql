@@ -74,18 +74,30 @@ begin
 end $$;
 
 
--- STAP 3 - Foto's (bucket recipe-photos) ----------------------------------
--- Bekijken blijft openbaar (de app gebruikt openbare links), maar uploaden,
--- vervangen en verwijderen mag alleen nog door gebruikers op de lijst.
-drop policy if exists recipe_photos_insert_huishouden on storage.objects;
-drop policy if exists recipe_photos_update_huishouden on storage.objects;
-drop policy if exists recipe_photos_delete_huishouden on storage.objects;
-create policy recipe_photos_insert_huishouden on storage.objects as restrictive for insert to public
-  with check (bucket_id <> 'recipe-photos' or public.is_toegestaan());
-create policy recipe_photos_update_huishouden on storage.objects as restrictive for update to public
-  using (bucket_id <> 'recipe-photos' or public.is_toegestaan());
-create policy recipe_photos_delete_huishouden on storage.objects as restrictive for delete to public
-  using (bucket_id <> 'recipe-photos' or public.is_toegestaan());
+-- STAP 3 - Foto's (bucket recipe-photos), deel A: kan altijd ------------------
+-- Ingelogde gebruikers op de lijst mogen foto's plaatsen en vervangen.
+-- De oude regels voor niet-ingelogd (anon) blijven nog even staan, zodat
+-- foto's uploaden blijft werken tot de nieuwe versie van Cucina (v60+) live is.
+drop policy if exists recipe_photos_lezen on storage.objects;
+drop policy if exists recipe_photos_plaatsen on storage.objects;
+drop policy if exists recipe_photos_vervangen on storage.objects;
+create policy recipe_photos_lezen on storage.objects for select to authenticated
+  using (bucket_id = 'recipe-photos' and public.is_toegestaan());
+create policy recipe_photos_plaatsen on storage.objects for insert to authenticated
+  with check (bucket_id = 'recipe-photos' and public.is_toegestaan());
+create policy recipe_photos_vervangen on storage.objects for update to authenticated
+  using (bucket_id = 'recipe-photos' and public.is_toegestaan())
+  with check (bucket_id = 'recipe-photos' and public.is_toegestaan());
+
+
+-- STAP 3 - deel B: PAS NA de app-update -------------------------------------
+-- Eerst controleren: open Cucina (versie v60 of hoger) en voeg bij een recept
+-- een foto toe. Lukt dat, voer dan dit uit. Daarna kan niemand meer zonder
+-- in te loggen foto's uploaden of overschrijven. (Foto's bekijken blijft
+-- gewoon werken: de bucket is openbaar.)
+drop policy if exists "allow uploads 1uy8qe8_0" on storage.objects;
+drop policy if exists "allow uploads 1uy8qe8_1" on storage.objects;
+drop policy if exists "allow uploads 1uy8qe8_2" on storage.objects;
 
 
 -- STAP 4 - Testen ----------------------------------------------------------
@@ -102,6 +114,10 @@ create policy recipe_photos_delete_huishouden on storage.objects as restrictive 
 --       execute format('drop policy if exists alleen_huishouden on public.%I', t);
 --     end if;
 --   end loop; end $$;
--- drop policy if exists recipe_photos_insert_huishouden on storage.objects;
--- drop policy if exists recipe_photos_update_huishouden on storage.objects;
--- drop policy if exists recipe_photos_delete_huishouden on storage.objects;
+-- drop policy if exists recipe_photos_lezen on storage.objects;
+-- drop policy if exists recipe_photos_plaatsen on storage.objects;
+-- drop policy if exists recipe_photos_vervangen on storage.objects;
+-- (Alleen als je deel B van stap 3 had uitgevoerd: de oude anonieme fotoregels terug)
+-- create policy "allow uploads 1uy8qe8_0" on storage.objects for insert to anon with check (bucket_id = 'recipe-photos');
+-- create policy "allow uploads 1uy8qe8_1" on storage.objects for update to anon using (bucket_id = 'recipe-photos');
+-- create policy "allow uploads 1uy8qe8_2" on storage.objects for select to anon using (bucket_id = 'recipe-photos');
