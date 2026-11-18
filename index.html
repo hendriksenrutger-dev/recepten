@@ -4,7 +4,7 @@
 <meta charset="UTF-8"/>
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover"/>
 <meta name="theme-color" content="#1A3A5C"/>
-<meta name="version" content="v58"/>
+<meta name="version" content="v60"/>
 <meta name="apple-mobile-web-app-capable" content="yes"/>
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"/>
 <meta name="apple-mobile-web-app-title" content="Cucina"/>
@@ -743,22 +743,15 @@ textarea{resize:vertical;min-height:88px}
 
 <script>
 /*
-  SQL voor RLS na het toevoegen van login (uitvoeren in Supabase SQL Editor):
-
-  -- Verwijder de oude open policy
-  DROP POLICY IF EXISTS "Iedereen kan alles" ON recipes;
-
-  -- Alleen ingelogde gebruikers mogen alles
-  CREATE POLICY "Authenticated users can do everything"
-    ON recipes FOR ALL
-    TO authenticated
-    USING (true)
-    WITH CHECK (true);
+  Databasebeveiliging (RLS): zie supabase/beveiliging.sql in deze repository.
 */
 
 var SB_URL = 'https://kegpsbtlfnqxrwiaeovc.supabase.co';
 var SB_KEY = 'sb_publishable_4afcXICjvnZHcjxruVoMRA_PKFBp1hp';
 var AK = 'cucina_anthropic_key';
+// Claude-modellen: hier op één plek bijwerken
+var AI_MODEL = 'claude-sonnet-5-5';      // recepten lezen, bedenken, wijn, chat
+var AI_MODEL_SNEL = 'claude-haiku-5-5';  // voedingswaarden (snel en goedkoop)
 var SK = 'cucina_shopping';
 var SESSION_KEY = 'cucina_session';
 
@@ -780,10 +773,11 @@ var timerSecs = 0;
 // -- SUPABASE --------------------------
 function sbf(path, o) {
   o = o || {};
-  var token = _authToken || SB_KEY;
-  return fetch(SB_URL + path, Object.assign({}, o, {
-    headers: Object.assign({ 'apikey': SB_KEY, 'Authorization': 'Bearer ' + token, 'Content-Type': 'application/json', 'Prefer': o.prefer || '' }, o.headers || {})
-  })).then(function(r) {
+  return verseToken().then(function(tk) {
+    return fetch(SB_URL + path, Object.assign({}, o, {
+      headers: Object.assign({ 'apikey': SB_KEY, 'Authorization': 'Bearer ' + (tk || SB_KEY), 'Content-Type': 'application/json', 'Prefer': o.prefer || '' }, o.headers || {})
+    }));
+  }).then(function(r) {
     return r.text().then(function(t) {
       if (!r.ok) throw new Error(t);
       return t ? JSON.parse(t) : null;
@@ -845,15 +839,35 @@ function saveDB(recipe) {
   });
 }
 
+// Melding als iets niet in de database is gekomen (in plaats van stil falen)
+function dbFout(wat, e) {
+  var m = (e && e.message) || '';
+  var reden = /JWT|jwt|401|403/.test(m) ? 'log opnieuw in' : (/fetch|network|Load failed/i.test(m) ? 'geen verbinding' : 'probeer het opnieuw');
+  toast(wat + ' niet opgeslagen in de database (' + reden + ')', 'er');
+}
+
 function patchDB(id, ch) {
-  sbf('/rest/v1/recipes?id=eq.' + id, { method: 'PATCH', body: JSON.stringify(ch) }).catch(function(){});
+  sbf('/rest/v1/recipes?id=eq.' + id, { method: 'PATCH', prefer: 'return=representation', body: JSON.stringify(ch) }).then(function(d) {
+    if (Array.isArray(d) && !d.length) throw new Error('geen rij bijgewerkt');
+  }).catch(function(e) { dbFout('Wijziging', e); });
   var i = recipes.findIndex(function(r){ return r.id == id; });
   if (i > -1) recipes[i] = normalizeRecipe(Object.assign({}, recipes[i], ch));
   localStorage.setItem('cucina_recipes', JSON.stringify(recipes));
 }
 
 function delDB(id) {
-  sbf('/rest/v1/recipes?id=eq.' + id, { method: 'DELETE' }).catch(function(){});
+  var weg = recipes.find(function(r){ return r.id == id; });
+  sbf('/rest/v1/recipes?id=eq.' + id, { method: 'DELETE', prefer: 'return=representation' }).then(function(d) {
+    if (Array.isArray(d) && !d.length) throw new Error('niets verwijderd');
+  }).catch(function(e) {
+    dbFout('Verwijderen', e);
+    // Recept terugzetten in de lijst, zodat je ziet dat het er nog is
+    if (weg && !recipes.some(function(r){ return r.id == id; })) {
+      recipes.unshift(weg);
+      localStorage.setItem('cucina_recipes', JSON.stringify(recipes));
+      renderList();
+    }
+  });
   recipes = recipes.filter(function(r){ return r.id != id; });
   localStorage.setItem('cucina_recipes', JSON.stringify(recipes));
 }
@@ -972,7 +986,7 @@ function renderList() {
   var sorted = filtered.slice().sort(function(a,b){ return a.name.localeCompare(b.name,'nl'); });
   list.innerHTML = sorted.map(function(r, i) {
     if (!r.name) return '';
-    var em = r.emoji || CE[r.category] || '&#127860;';
+    var em = esc(r.emoji) || CE[r.category] || '&#127860;';
     var meta = (r.category || 'overig') + (r.time ? ' - ' + r.time + ' min' : '');
     var isSel = skSelected.indexOf(r.id) > -1;
     if (skSelectMode) {
@@ -980,7 +994,7 @@ function renderList() {
         '<div class="rc-cb' + (isSel ? ' checked' : '') + '">' + (isSel ? '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg>' : '') + '</div>' +
         '<span class="re">' + em + '</span>' +
         '<div class="ri">' +
-          '<div class="rn">' + r.name + '</div>' +
+          '<div class="rn">' + esc(r.name) + '</div>' +
           '<div class="rm">' + meta + '</div>' +
         '</div>' +
       '</div>';
@@ -988,7 +1002,7 @@ function renderList() {
     return '<div class="rc" style="animation-delay:' + (i * 0.03) + 's">' +
       '<span class="re" onclick="showDetail(\'' + r.id + '\')">' + em + '</span>' +
       '<div class="ri" onclick="showDetail(\'' + r.id + '\')">' +
-        '<div class="rn">' + r.name + '</div>' +
+        '<div class="rn">' + esc(r.name) + '</div>' +
         '<div class="rm">' + meta + '</div>' +
       '</div>' +
       '<span class="ra" onclick="showDetail(\'' + r.id + '\')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="9 18 15 12 9 6"/></svg></span>' +
@@ -1007,17 +1021,17 @@ function setFilter(cat, btn) {
 function renderDetail(r) {
   var f = curSrv / (baseSrv || 4);
   var ings = (r.ingredients || []).map(function(i){ return scaleIng(i, f); });
-  var em = r.emoji || CE[r.category] || '&#127860;';
+  var em = esc(r.emoji) || CE[r.category] || '&#127860;';
   var nutrHtml = r.nutrition ?
-    '<div class="nv"><div class="nvn">' + r.nutrition.kcal + '</div><div class="nvl">kcal</div></div>' +
-    '<div class="nv"><div class="nvn">' + r.nutrition.protein + 'g</div><div class="nvl">eiwit</div></div>' +
-    '<div class="nv"><div class="nvn">' + r.nutrition.carbs + 'g</div><div class="nvl">koolh.</div></div>' +
-    '<div class="nv"><div class="nvn">' + r.nutrition.fat + 'g</div><div class="nvl">vet</div></div>'
+    '<div class="nv"><div class="nvn">' + esc(r.nutrition.kcal) + '</div><div class="nvl">kcal</div></div>' +
+    '<div class="nv"><div class="nvn">' + esc(r.nutrition.protein) + 'g</div><div class="nvl">eiwit</div></div>' +
+    '<div class="nv"><div class="nvn">' + esc(r.nutrition.carbs) + 'g</div><div class="nvl">koolh.</div></div>' +
+    '<div class="nv"><div class="nvn">' + esc(r.nutrition.fat) + 'g</div><div class="nvl">vet</div></div>'
     : '<div style="grid-column:1/-1;font-size:.8rem;color:var(--tl);text-align:center;padding:.35rem">Klik "Bereken" om op te halen</div>';
 
   var photoBlock = r.photo_url
     ? '<div style="position:relative;width:130px;margin:0 auto .75rem">' +
-        '<img src="' + r.photo_url + '" style="width:130px;height:130px;object-fit:cover;border-radius:14px;display:block;box-shadow:0 4px 16px rgba(0,0,0,.15)"/>' +
+        '<img src="' + safeUrl(r.photo_url) + '" style="width:130px;height:130px;object-fit:cover;border-radius:14px;display:block;box-shadow:0 4px 16px rgba(0,0,0,.15)"/>' +
         '<button onclick="triggerPhotoUpload(\'' + r.id + '\')" style="position:absolute;bottom:4px;right:4px;background:rgba(0,0,0,.5);color:#fff;border:none;border-radius:50%;width:26px;height:26px;font-size:.75rem;cursor:pointer;display:flex;align-items:center;justify-content:center">&#128247;</button>' +
       '</div>'
     : '<div class="dei">' + em + '</div>' +
@@ -1027,12 +1041,12 @@ function renderDetail(r) {
 
   document.getElementById('dbody').innerHTML =
     photoBlock +
-    '<div class="dtg" id="dtg-' + r.id + '"><span class="tag" style="cursor:pointer" onclick="window._editCatId=\'' + r.id + '\';editCategory()" title="Categorie wijzigen">' + (r.category||'overig') + ' &#9998;</span>' + (r.difficulty ? '<span class="tag" style="background:rgba(232,100,42,.1);color:var(--or)">' + r.difficulty + '</span>' : '') + '</div>' +
-    '<div class="dtw"><h2 class="dti" id="dtitl">' + r.name + '</h2><button class="el" onclick="editTitle(\'' + r.id + '\')">bewerken</button></div>' +
+    '<div class="dtg" id="dtg-' + r.id + '"><span class="tag" style="cursor:pointer" onclick="window._editCatId=\'' + r.id + '\';editCategory()" title="Categorie wijzigen">' + esc(r.category||'overig') + ' &#9998;</span>' + (r.difficulty ? '<span class="tag" style="background:rgba(232,100,42,.1);color:var(--or)">' + esc(r.difficulty) + '</span>' : '') + '</div>' +
+    '<div class="dtw"><h2 class="dti" id="dtitl">' + esc(r.name) + '</h2><button class="el" onclick="editTitle(\'' + r.id + '\')">bewerken</button></div>' +
     '<div class="dst">' +
-      (r.time ? '<div class="ds"><div class="dsl">Tijd</div><div class="dsv">' + r.time + ' min</div></div>' : '<div class="ds"><div class="dsl">Tijd</div><div class="dsv">--</div></div>') +
-      '<div class="ds"><div class="dsl">Personen</div><div class="dsv">' + (r.servings||4) + '</div></div>' +
-      (r.difficulty ? '<div class="ds"><div class="dsl">Niveau</div><div class="dsv">' + r.difficulty + '</div></div>' : '') +
+      (r.time ? '<div class="ds"><div class="dsl">Tijd</div><div class="dsv">' + esc(r.time) + ' min</div></div>' : '<div class="ds"><div class="dsl">Tijd</div><div class="dsv">--</div></div>') +
+      '<div class="ds"><div class="dsl">Personen</div><div class="dsv">' + esc(r.servings||4) + '</div></div>' +
+      (r.difficulty ? '<div class="ds"><div class="dsl">Niveau</div><div class="dsv">' + esc(r.difficulty) + '</div></div>' : '') +
     '</div>' +
     '<div class="sa"><span class="sal">Aanpassen voor</span><div class="sc2"><button class="svb" onclick="adjSrv(-1)">-</button><span class="svn" id="svn">' + curSrv + '</span><button class="svb" onclick="adjSrv(1)">+</button><button onclick="saveServings(\'' + r.id + '\')" id="srv-save-btn" style="display:none;background:var(--or);color:white;border:none;border-radius:6px;padding:.2rem .55rem;font-size:.75rem;font-weight:600;cursor:pointer;margin-left:.25rem">Opslaan</button></div></div>' +
     '<div class="nb"><div class="nt">Voedingswaarden per 100g <button class="ncb" onclick="calcNutr(\'' + r.id + '\')">Bereken</button></div><div class="ng" id="ng' + r.id + '">' + nutrHtml + '</div></div>' +
@@ -1056,11 +1070,11 @@ function renderDetail(r) {
     '<div id="wijn-' + r.id + '"></div>' +
     '<div id="lekker-' + r.id + '"></div>' +
     '<div class="stit">Ingredienten <div class="sac"><button class="el" onclick="editField(\'' + r.id + '\',\'ingredients\')">bewerken</button></div></div>' +
-    '<ul class="il" id="il' + r.id + '">' + ings.map(function(ing, idx){ return '<li onclick="toggleIngCheck(this)" data-idx="' + idx + '"><span class="ic"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg></span>' + ing + '</li>'; }).join('') + '</ul>' +
+    '<ul class="il" id="il' + r.id + '">' + ings.map(function(ing, idx){ return '<li onclick="toggleIngCheck(this)" data-idx="' + idx + '"><span class="ic"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg></span>' + esc(ing) + '</li>'; }).join('') + '</ul>' +
     '<div class="stit">Bereiding <div class="sac"><button class="el" onclick="editField(\'' + r.id + '\',\'steps\')">bewerken</button></div></div>' +
-    '<ol class="kl" id="kl' + r.id + '">' + (r.steps||[]).map(function(s,i){ return '<li class="ki"><span class="kn">' + (i+1) + '</span><span>' + s + '</span></li>'; }).join('') + '</ol>' +
+    '<ol class="kl" id="kl' + r.id + '">' + (r.steps||[]).map(function(s,i){ return '<li class="ki"><span class="kn">' + (i+1) + '</span><span>' + esc(s) + '</span></li>'; }).join('') + '</ol>' +
     _notesHtml(r) +
-    (r.source_url ? '<div class="ds2">Bron: <a href="' + r.source_url + '" target="_blank">' + safeHost(r.source_url) + '</a></div>' : '');
+    (safeUrl(r.source_url) ? '<div class="ds2">Bron: <a href="' + safeUrl(r.source_url) + '" target="_blank" rel="noopener">' + safeHost(r.source_url) + '</a></div>' : '');
 }
 
 // -- NOTES / TIPS ---------------------
@@ -1139,11 +1153,11 @@ function adjSrv(d) {
   var f = curSrv / (baseSrv || 4);
   var el = document.getElementById('il' + curId);
   if (el) el.innerHTML = (r.ingredients||[]).map(function(ing, idx){
-    return '<li onclick="toggleIngCheck(this)" data-idx="' + idx + '"><span class="ic"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg></span>' + scaleIng(ing, f) + '</li>';
+    return '<li onclick="toggleIngCheck(this)" data-idx="' + idx + '"><span class="ic"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg></span>' + esc(scaleIng(ing, f)) + '</li>';
   }).join('');
   var kl = document.getElementById('kl' + curId);
   if (kl) kl.innerHTML = (r.steps||[]).map(function(s,i){
-    return '<li class="ki"><span class="kn">' + (i+1) + '</span><span>' + scaleIng(s, f) + '</span></li>';
+    return '<li class="ki"><span class="kn">' + (i+1) + '</span><span>' + esc(scaleIng(s, f)) + '</span></li>';
   }).join('');
 }
 
@@ -1164,39 +1178,57 @@ function scaleIng(ing, f) {
   if (f === 1) return ing;
   var letters = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
   var protected_ = [];
-  function protect(m) { protected_.push(m); return '§PH' + letters[protected_.length - 1] + '§'; }
-  // Protect ranges: "8 tot 10 minuten"
-  var rangePattern = /(\d+([.,]\d+)?)\s*(tot|à|a|-)\s*(\d+([.,]\d+)?)\s*(°C|°F|°|graden|minuten|min\.?|uur|uren|seconden|sec\.?)/gi;
-  var temp = ing.replace(rangePattern, protect);
-  // Protect single numbers followed by time/temp units
-  var skipPattern = /(\d+([.,]\d+)?)\s*(°C|°F|°|graden|minuten|min\.?|uur|uren|seconden|sec\.?)/gi;
-  temp = temp.replace(skipPattern, protect);
-  // Scale fractions like 1/2, 3/4 as a unit
-  temp = temp.replace(/(\d+)\/(\d+)/g, function(m, a, b) {
-    var n = parseInt(a) / parseInt(b);
-    var s = Math.round(n * f * 100) / 100;
-    // Try to express as simple fraction
-    if (s === 0.25) return '1/4';
-    if (s === 0.5) return '1/2';
-    if (s === 0.75) return '3/4';
-    if (s === 1/3) return '1/3';
-    if (s === 2/3) return '2/3';
-    return String(s).replace('.',',');
+  // Plaatshouder zonder cijfers, zodat hij niet zelf geschaald wordt
+  function protect(m) { var i = protected_.push(m) - 1; return '§PH' + letters[Math.floor(i / 26) % 26] + letters[i % 26] + '§'; }
+  // Een getal: "1 1/2", "1/2", "1,5" of "2"
+  var NUM = '(?:\\d+\\s+\\d+\\/\\d+|\\d+\\/\\d+|\\d+(?:[.,]\\d+)?)';
+  var UNIT = '(?:°C|°F|°|graden|minuten|min\\.?|uur|uren|seconden|sec\\.?)';
+  // Tijden en temperaturen niet schalen: "8 tot 10 minuten", "180 °C", "1/2 uur"
+  var temp = ing.replace(new RegExp(NUM + '\\s*(?:tot|à|a|-)\\s*' + NUM + '\\s*' + UNIT, 'gi'), protect);
+  temp = temp.replace(new RegExp(NUM + '\\s*' + UNIT, 'gi'), protect);
+  // Breuken (ook "1 1/2") als geheel schalen en als breuk teruggeven
+  temp = temp.replace(/(?:(\d+)\s+)?(\d+)\/(\d+)/g, function(m, heel, a, b) {
+    if (!parseInt(b)) return m;
+    var v = ((heel ? parseInt(heel) : 0) + parseInt(a) / parseInt(b)) * f;
+    return protect(mooieBreuk(v));
   });
-  // Scale remaining plain numbers
+  // Overige getallen schalen
   temp = temp.replace(/(\d+([.,]\d+)?)/g, function(m) {
     var n = parseFloat(m.replace(',','.'));
     var s = Math.round(n * f * 10) / 10;
     return String(s).replace('.',',');
   });
-  // Restore protected values
-  temp = temp.replace(/§PH([A-Z])§/g, function(m, c) { return protected_[letters.indexOf(c)]; });
+  // Beschermde stukken terugzetten
+  temp = temp.replace(/§PH([A-Z])([A-Z])§/g, function(m, c1, c2) { return protected_[letters.indexOf(c1) * 26 + letters.indexOf(c2)]; });
   return temp;
+}
+
+// 0.75 -> "3/4", 1.5 -> "1 1/2", 2 -> "2", 0.6 -> "0,6"
+function mooieBreuk(v) {
+  var heel = Math.floor(v + 0.02);
+  var rest = v - heel;
+  if (Math.abs(rest) < 0.02) return String(heel);
+  var breuken = [[1/4, '1/4'], [1/3, '1/3'], [1/2, '1/2'], [2/3, '2/3'], [3/4, '3/4']];
+  for (var i = 0; i < breuken.length; i++) {
+    if (Math.abs(rest - breuken[i][0]) < 0.02) return (heel ? heel + ' ' : '') + breuken[i][1];
+  }
+  return String(Math.round(v * 10) / 10).replace('.', ',');
 }
 
 function toggleIngCheck(li) { li.classList.toggle('ck'); }
 
-function safeHost(url) { try { return new URL(url).hostname.replace('www.',''); } catch(e){ return ''; } }
+function safeHost(url) { try { return esc(new URL(url).hostname.replace('www.','')); } catch(e){ return ''; } }
+
+// Tekst veilig in HTML zetten (receptnamen, ingredienten, AI-antwoorden, ...)
+function esc(s) {
+  return s == null ? '' : String(s).replace(/[&<>"']/g, function(c){ return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]; });
+}
+// Tekst als argument in een onclick="..." (werkt ook met aanhalingstekens in de naam)
+function jsArg(s) { return esc(JSON.stringify(s == null ? '' : String(s))); }
+// Alleen echte http(s)-links toestaan (geen javascript: e.d.)
+function safeUrl(u) {
+  try { var x = new URL(u); return (x.protocol === 'https:' || x.protocol === 'http:') ? esc(x.href) : ''; } catch(e) { return ''; }
+}
 
 // -- EDIT ------------------------------
 function editTitle(id) {
@@ -1204,7 +1236,7 @@ function editTitle(id) {
   if (!r) return;
   var wrap = document.querySelector('.dtw');
   if (!wrap) return;
-  wrap.innerHTML = '<div style="width:100%"><input class="ei" id="eti" value="' + r.name.replace(/"/g,'&quot;') + '"/><div class="ebs"><button class="es" onclick="saveTitle(\'' + id + '\')">Opslaan</button><button class="ec" onclick="showDetail(\'' + id + '\')">Annuleren</button></div></div>';
+  wrap.innerHTML = '<div style="width:100%"><input class="ei" id="eti" value="' + esc(r.name) + '"/><div class="ebs"><button class="es" onclick="saveTitle(\'' + id + '\')">Opslaan</button><button class="ec" onclick="showDetail(\'' + id + '\')">Annuleren</button></div></div>';
   document.getElementById('eti').focus();
 }
 
@@ -1264,7 +1296,7 @@ function calcNutr(id) {
     method: 'POST',
     headers: { 'Content-Type': 'application/json', 'x-api-key': key, 'anthropic-version': '2023-06-01', 'anthropic-dangerous-direct-browser-access': 'true' },
     body: JSON.stringify({
-      model: 'claude-haiku-4-5-20251001', max_tokens: 250,
+      model: AI_MODEL_SNEL, max_tokens: 4250, output_config: { effort: 'low' },
       system: 'Je bent een voedingsdeskundige. Reageer UITSLUITEND met een geldig JSON object in exact dit formaat, zonder enige andere tekst, uitleg of markdown: {"kcal":number,"protein":number,"carbs":number,"fat":number}. Geen inleiding, geen afsluiting, alleen het JSON object.',
       messages: [{ role: 'user', content: prompt }]
     })
@@ -1284,7 +1316,7 @@ function calcNutr(id) {
     nutr.carbs = Math.round(+nutr.carbs * 10) / 10;
     nutr.fat = Math.round(+nutr.fat * 10) / 10;
     patchDB(id, { nutrition: nutr });
-    box.innerHTML = '<div class="nv"><div class="nvn">' + nutr.kcal + '</div><div class="nvl">kcal</div></div><div class="nv"><div class="nvn">' + nutr.protein + 'g</div><div class="nvl">eiwit</div></div><div class="nv"><div class="nvn">' + nutr.carbs + 'g</div><div class="nvl">koolh.</div></div><div class="nv"><div class="nvn">' + nutr.fat + 'g</div><div class="nvl">vet</div></div>';
+    box.innerHTML = '<div class="nv"><div class="nvn">' + esc(nutr.kcal) + '</div><div class="nvl">kcal</div></div><div class="nv"><div class="nvn">' + esc(nutr.protein) + 'g</div><div class="nvl">eiwit</div></div><div class="nv"><div class="nvn">' + esc(nutr.carbs) + 'g</div><div class="nvl">koolh.</div></div><div class="nv"><div class="nvn">' + esc(nutr.fat) + 'g</div><div class="nvl">vet</div></div>';
     toast('Voedingswaarden berekend', 'ok');
   }).catch(function(e) {
     box.innerHTML = '<div style="grid-column:1/-1;font-size:.78rem;color:var(--tl);text-align:center">Probeer opnieuw</div>';
@@ -1321,9 +1353,9 @@ function renderCookStep() {
   }
   document.getElementById('ckdots').innerHTML = dots;
   stopTimer();
-  var allIngs = ((cookRecipe.ingredients || []).map(function(i){ return scaleIng(i, f); })).map(function(i){ return '<div class="ckii">' + i + '</div>'; }).join('');
+  var allIngs = ((cookRecipe.ingredients || []).map(function(i){ return scaleIng(i, f); })).map(function(i){ return '<div class="ckii">' + esc(i) + '</div>'; }).join('');
   var ingSection = allIngs ? '<div class="ckig"><p class="ckigt">Ingredienten</p>' + allIngs + '</div>' : '';
-  var content2 = '<div class="cks"><div class="ckbg">' + (idx+1) + '</div><p class="cksl">Stap ' + (idx+1) + '</p><p class="ckst">' + step + '</p></div>' +
+  var content2 = '<div class="cks"><div class="ckbg">' + (idx+1) + '</div><p class="cksl">Stap ' + (idx+1) + '</p><p class="ckst">' + esc(step) + '</p></div>' +
     '<div class="cktb">' +
       '<div style="flex:1">' +
         '<div class="cktl" style="margin-bottom:.35rem">Timer</div>' +
@@ -1529,7 +1561,7 @@ function renderWegtik() {
   var vink = '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>';
   document.getElementById('wt-lijst').innerHTML = _wt.items.map(function(it, n) {
     var t = String(it.orig).replace(/[&<>"]/g, function(c){ return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]; });
-    var lab = it.label ? '<span class="wt-label ' + (it.label === 'op voorraad' ? 'voorraad' : 'bijna') + '">' + it.label + '</span>' : '';
+    var lab = it.label ? '<span class="wt-label ' + (it.label === 'op voorraad' ? 'voorraad' : 'bijna') + '">' + esc(it.label) + '</span>' : '';
     return '<button class="wt-rij' + (it.aan ? '' : ' uit') + '" onclick="wtWissel(' + n + ')" aria-pressed="' + it.aan + '"><span class="wt-vak">' + vink + '</span><span class="wt-tekst">' + t + '</span>' + lab + '</button>';
   }).join('');
   var aantal = _wt.items.filter(function(i){ return i.aan; }).length;
@@ -1570,27 +1602,38 @@ function ontleedIngredient(tekst) {
   return uit;
 }
 
-// Geldige token voor Supabase; ververst zo nodig (sessie wordt gedeeld met de boodschappen-app)
+// Geldige token voor Supabase; ververst zo nodig. De sessie wordt gedeeld met de boodschappen-app,
+// die hem ook ververst, dus steeds opnieuw uit localStorage lezen.
+var _verversBezig = null;
 function verseToken() {
   var s = null;
   try { s = JSON.parse(localStorage.getItem(SESSION_KEY) || 'null'); } catch(e) {}
   if (!s || !s.access_token) return Promise.resolve(_authToken);
   var exp = s.expires_at > 1e11 ? s.expires_at : s.expires_at * 1000;
   if (exp > Date.now() + 60000 || !s.refresh_token) { _authToken = s.access_token; return Promise.resolve(s.access_token); }
-  return fetch(SB_URL + '/auth/v1/token?grant_type=refresh_token', {
+  if (_verversBezig) return _verversBezig;                 // niet twee keer tegelijk verversen
+  var oud = s.refresh_token;
+  _verversBezig = fetch(SB_URL + '/auth/v1/token?grant_type=refresh_token', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json', 'apikey': SB_KEY },
-    body: JSON.stringify({ refresh_token: s.refresh_token })
+    body: JSON.stringify({ refresh_token: oud })
   }).then(function(r){ return r.json(); }).then(function(data) {
-    if (!data.access_token) return s.access_token;
+    if (!data.access_token) {
+      // Mislukt: misschien heeft de boodschappen-app net ververst
+      var nu = null;
+      try { nu = JSON.parse(localStorage.getItem(SESSION_KEY) || 'null'); } catch(e) {}
+      if (nu && nu.refresh_token !== oud && nu.access_token) { _authToken = nu.access_token; return nu.access_token; }
+      return s.access_token;
+    }
     _authToken = data.access_token;
-    localStorage.setItem(SESSION_KEY, JSON.stringify({
-      access_token: data.access_token,
-      refresh_token: data.refresh_token || s.refresh_token,
-      expires_at: Date.now() + (data.expires_in * 1000)
-    }));
+    s.access_token = data.access_token;
+    s.refresh_token = data.refresh_token || oud;
+    s.expires_at = Date.now() + (data.expires_in || 3600) * 1000;
+    localStorage.setItem(SESSION_KEY, JSON.stringify(s));
     return data.access_token;
-  }).catch(function(){ return s.access_token; });
+  }).catch(function(){ return s.access_token; })          // offline: oude token proberen
+    .then(function(t){ _verversBezig = null; return t; });
+  return _verversBezig;
 }
 
 function wtOpslaan() {
@@ -1714,9 +1757,9 @@ function getWijnAdvies(id, forceRefresh) {
   box.innerHTML = '<div style="background:rgba(139,0,0,.05);border:1px solid rgba(139,0,0,.15);border-radius:var(--ra);padding:.85rem 1rem;margin-bottom:1rem"><div style="display:flex;align-items:center;gap:.5rem;margin-bottom:.5rem"><span style="font-size:1.1rem">&#127863;</span><span style="font-family:Playfair Display,serif;font-size:.9rem;font-weight:700;color:#8B0000">Wijnadvies laden...</span></div><div class="sp2" style="margin:0 auto"></div></div>';
   fetch('https://api.anthropic.com/v1/messages', {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json', 'x-api-key': key, 'anthropic-version': '2023-06-01', 'anthropic-dangerous-direct-browser-access': 'true' },
+    headers: { 'Content-Type': 'application/json', 'x-api-key': key, 'anthropic-version': '2023-06-01', 'anthropic-dangerous-direct-browser-access': 'true', 'anthropic-beta': 'server-side-fallback-2026-07-01' },
     body: JSON.stringify({
-      model: 'claude-sonnet-4-6', max_tokens: 600,
+      model: AI_MODEL, max_tokens: 4600, output_config: { effort: 'low' }, fallbacks: 'default',
       system: 'Je bent een gerenommeerde sommelier. Geef concreet en serieus wijnadvies. Noem specifieke druivenrassen, regio en stijlen. Geen algemene uitspraken. Schrijf in het Nederlands.',
       messages: [{ role: 'user', content: 'Geef wijnadvies bij het gerecht "' + r.name + '" (ingredienten: ' + (r.ingredients||[]).slice(0,6).join(', ') + '). Geef 2-3 concrete wijnsuggesties met druivenras, regio en waarom het past. Hou het beknopt maar serieus.' }]
     })
@@ -1737,7 +1780,7 @@ function _wijnBox(txt, id) {
       '<div style="display:flex;align-items:center;gap:.5rem"><span style="font-size:1.1rem">&#127863;</span><span style="font-family:Playfair Display,serif;font-size:.9rem;font-weight:700;color:#8B0000">Wijnadvies</span></div>' +
       '<button onclick="getWijnAdvies(\'' + id + '\',true)" style="background:none;border:none;font-size:.72rem;color:#8B0000;cursor:pointer;text-decoration:underline">&#8635; Nieuw</button>' +
     '</div>' +
-    '<div style="font-size:.88rem;line-height:1.65;color:var(--tx);white-space:pre-wrap">' + txt + '</div>' +
+    '<div style="font-size:.88rem;line-height:1.65;color:var(--tx);white-space:pre-wrap">' + esc(txt) + '</div>' +
   '</div>';
 }
 
@@ -1758,9 +1801,9 @@ function getLekkerMet(id, forceRefresh) {
   box.innerHTML = '<div style="background:rgba(46,125,50,.05);border:1px solid rgba(46,125,50,.15);border-radius:var(--ra);padding:.85rem 1rem;margin-bottom:1rem"><div style="display:flex;align-items:center;gap:.5rem;margin-bottom:.5rem"><span style="font-size:1.1rem">&#128523;</span><span style="font-family:Playfair Display,serif;font-size:.9rem;font-weight:700;color:#2E7D32">Lekker met laden...</span></div><div class="sp2" style="margin:0 auto"></div></div>';
   fetch('https://api.anthropic.com/v1/messages', {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json', 'x-api-key': key, 'anthropic-version': '2023-06-01', 'anthropic-dangerous-direct-browser-access': 'true' },
+    headers: { 'Content-Type': 'application/json', 'x-api-key': key, 'anthropic-version': '2023-06-01', 'anthropic-dangerous-direct-browser-access': 'true', 'anthropic-beta': 'server-side-fallback-2026-07-01' },
     body: JSON.stringify({
-      model: 'claude-sonnet-4-6', max_tokens: 500,
+      model: AI_MODEL, max_tokens: 4500, output_config: { effort: 'low' }, fallbacks: 'default',
       system: 'Je bent een culinaire expert. Geef ALLEEN een geldig JSON array terug, geen uitleg, geen markdown. Schrijf in het Nederlands.',
       messages: [{ role: 'user', content: 'Wat past lekker bij "' + r.name + '" (ingredienten: ' + (r.ingredients||[]).slice(0,6).join(', ') + ')? Geef 4 concrete bijgerechten of combinaties. Retourneer ALLEEN een JSON array: [{"name":"naam van het gerecht","desc":"korte uitleg waarom het past"}]' }]
     })
@@ -1788,22 +1831,22 @@ function _lekkerBox(txt, id) {
     var items = JSON.parse(txt);
     if (Array.isArray(items)) {
       inner = items.map(function(item) {
-        var name = (item.name || '').replace(/'/g, '&#39;');
+        var name = esc(item.name || ''); var nameArg = jsArg(item.name || '');
         return '<div style="display:flex;align-items:flex-start;justify-content:space-between;gap:.5rem;padding:.5rem 0;border-bottom:1px solid rgba(46,125,50,.1)">' +
           '<div style="flex:1">' +
             '<div style="font-size:.86rem;font-weight:600;color:var(--tx)">' + name + '</div>' +
-            '<div style="font-size:.78rem;color:var(--tm);margin-top:.1rem">' + (item.desc || '') + '</div>' +
+            '<div style="font-size:.78rem;color:var(--tm);margin-top:.1rem">' + esc(item.desc || '') + '</div>' +
           '</div>' +
           '<div style="display:flex;gap:.3rem;flex-shrink:0;margin-top:.1rem">' +
-            '<button onclick="searchSuggestion(\'' + name + '\')" title="Zoeken op Google" style="background:var(--bp);border:1px solid var(--br);border-radius:6px;padding:.2rem .45rem;font-size:.72rem;cursor:pointer;color:var(--tm)">&#128269;</button>' +
-            '<button onclick="generateFromSuggestion(\'' + name + '\')" title="Genereer recept" style="background:rgba(46,125,50,.1);border:1px solid rgba(46,125,50,.25);border-radius:6px;padding:.2rem .45rem;font-size:.72rem;cursor:pointer;color:#2E7D32">&#10024;</button>' +
+            '<button onclick="searchSuggestion(' + nameArg + ')" title="Zoeken op Google" style="background:var(--bp);border:1px solid var(--br);border-radius:6px;padding:.2rem .45rem;font-size:.72rem;cursor:pointer;color:var(--tm)">&#128269;</button>' +
+            '<button onclick="generateFromSuggestion(' + nameArg + ')" title="Genereer recept" style="background:rgba(46,125,50,.1);border:1px solid rgba(46,125,50,.25);border-radius:6px;padding:.2rem .45rem;font-size:.72rem;cursor:pointer;color:#2E7D32">&#10024;</button>' +
           '</div>' +
         '</div>';
       }).join('');
     }
   } catch(e) {
     // Fallback: plain text
-    inner = '<div style="font-size:.88rem;line-height:1.65;color:var(--tx);white-space:pre-wrap">' + txt + '</div>';
+    inner = '<div style="font-size:.88rem;line-height:1.65;color:var(--tx);white-space:pre-wrap">' + esc(txt) + '</div>';
   }
 
   return '<div style="background:rgba(46,125,50,.05);border:1px solid rgba(46,125,50,.2);border-radius:var(--ra);padding:.85rem 1rem;margin-bottom:1rem">' +
@@ -1828,9 +1871,9 @@ function generateFromSuggestion(name) {
   var rSeed = Math.floor(Math.random() * 9999);
   fetch('https://api.anthropic.com/v1/messages', {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json', 'x-api-key': key, 'anthropic-version': '2023-06-01', 'anthropic-dangerous-direct-browser-access': 'true' },
+    headers: { 'Content-Type': 'application/json', 'x-api-key': key, 'anthropic-version': '2023-06-01', 'anthropic-dangerous-direct-browser-access': 'true', 'anthropic-beta': 'server-side-fallback-2026-07-01' },
     body: JSON.stringify({
-      model: 'claude-sonnet-4-6', max_tokens: 1500,
+      model: AI_MODEL, max_tokens: 5500, output_config: { effort: 'medium' }, fallbacks: 'default',
       system: 'Je bent een professionele kok. Schrijf in het Nederlands. Geef ALLEEN een geldig JSON object terug, geen uitleg, geen markdown.',
       messages: [{ role: 'user', content: 'Maak een volledig recept voor "' + name + '". Inspireer je op de ' + rCuisine + 'e keuken. Seed: ' + rSeed + '. Geef ALLEEN een JSON object terug met velden: name, category (vlees/kip/vis/vegetarisch/pasta/soep/nagerecht/brood/overig), emoji, servings, time, difficulty (Makkelijk/Gemiddeld/Moeilijk), ingredients (array), steps (array).' }]
     })
@@ -1878,10 +1921,10 @@ function importUrl() {
   document.getElementById('urstx').textContent = 'Recept ophalen...';
   fetch('https://api.anthropic.com/v1/messages', {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json', 'x-api-key': key, 'anthropic-version': '2023-06-01', 'anthropic-dangerous-direct-browser-access': 'true' },
+    headers: { 'Content-Type': 'application/json', 'x-api-key': key, 'anthropic-version': '2023-06-01', 'anthropic-dangerous-direct-browser-access': 'true', 'anthropic-beta': 'server-side-fallback-2026-07-01' },
     body: JSON.stringify({
-      model: 'claude-sonnet-4-6', max_tokens: 2000,
-      tools: [{ type: 'web_search_20250305', name: 'web_search' }],
+      model: AI_MODEL, max_tokens: 6000, output_config: { effort: 'medium' }, fallbacks: 'default',
+      tools: [{ type: 'web_search_20260209', name: 'web_search' }],
       messages: [{ role: 'user', content: 'Haal het recept op van deze URL: ' + url + '\n\nGeef UITSLUITEND een JSON object terug:\n{"name":"...","category":"vlees|vis|vegetarisch|bbq|soep|pasta|nagerecht|overig","emoji":"...","servings":4,"time":45,"difficulty":"Makkelijk|Gemiddeld|Moeilijk","ingredients":["..."],"steps":["..."]}' }]
     })
   }).then(function(r){ return r.json(); }).then(function(data) {
@@ -1924,9 +1967,9 @@ function handlePhoto(input) {
     var mt = file.type || 'image/jpeg';
     fetch('https://api.anthropic.com/v1/messages', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'x-api-key': key, 'anthropic-version': '2023-06-01', 'anthropic-dangerous-direct-browser-access': 'true' },
+      headers: { 'Content-Type': 'application/json', 'x-api-key': key, 'anthropic-version': '2023-06-01', 'anthropic-dangerous-direct-browser-access': 'true', 'anthropic-beta': 'server-side-fallback-2026-07-01' },
       body: JSON.stringify({
-        model: 'claude-sonnet-4-6', max_tokens: 2000,
+        model: AI_MODEL, max_tokens: 6000, output_config: { effort: 'medium' }, fallbacks: 'default',
         messages: [{ role: 'user', content: [
           { type: 'image', source: { type: 'base64', media_type: mt, data: b64 } },
           { type: 'text', text: 'Dit is een foto van een handgeschreven recept. Lees het volledig en nauwkeurig uit. Geef UITSLUITEND een JSON object terug:\n{"name":"...","category":"vlees|vis|vegetarisch|bbq|soep|pasta|nagerecht|overig","emoji":"...","servings":4,"time":45,"difficulty":"Makkelijk|Gemiddeld|Moeilijk","ingredients":["..."],"steps":["..."]}' }
@@ -1965,9 +2008,9 @@ function handleFile(input) {
     var b64 = reader.result.split(',')[1];
     fetch('https://api.anthropic.com/v1/messages', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'x-api-key': key, 'anthropic-version': '2023-06-01', 'anthropic-dangerous-direct-browser-access': 'true' },
+      headers: { 'Content-Type': 'application/json', 'x-api-key': key, 'anthropic-version': '2023-06-01', 'anthropic-dangerous-direct-browser-access': 'true', 'anthropic-beta': 'server-side-fallback-2026-07-01' },
       body: JSON.stringify({
-        model: 'claude-sonnet-4-6', max_tokens: 2000,
+        model: AI_MODEL, max_tokens: 6000, output_config: { effort: 'medium' }, fallbacks: 'default',
         messages: [{ role: 'user', content: [
           { type: 'document', source: { type: 'base64', media_type: 'application/pdf', data: b64 } },
           { type: 'text', text: 'Dit PDF bevat een recept. Lees het volledig. Geef ALLEEN dit JSON object terug: {"name":"...","category":"vlees|vis|vegetarisch|bbq|soep|pasta|nagerecht|brood|overig","emoji":"...","servings":4,"time":45,"difficulty":"Makkelijk|Gemiddeld|Moeilijk","ingredients":["..."],"steps":["..."]}' }
@@ -2188,9 +2231,9 @@ function _renderMenu() {
   var html = '<div style="display:flex;flex-direction:column;gap:.5rem">';
   _menuDays.forEach(function(d, i) {
     var color = catColors[d.type] || '#555';
-    var name = d.recipe ? d.recipe.name : 'AVG — eigen keuze';
+    var name = d.recipe ? esc(d.recipe.name) : 'AVG — eigen keuze';
     var sub = d.recipe ? (d.recipe.time ? d.recipe.time + ' min' : '') : 'Aardappelen, vlees, groente';
-    var em = d.recipe ? (d.recipe.emoji || CE[d.recipe.category] || '&#127860;') : '&#127859;';
+    var em = d.recipe ? (esc(d.recipe.emoji) || CE[d.recipe.category] || '&#127860;') : '&#127859;';
     var btns = d.recipe ?
       '<button onclick="openMenuRecipe(\'' + d.recipe.id + '\')" style="background:var(--bp);border:1px solid var(--br);border-radius:6px;padding:.3rem .5rem;font-size:.72rem;color:var(--bd);cursor:pointer">Open</button>' +
       '<button onclick="_reroolDay(' + i + ')" title="Andere keuze" style="background:var(--bp);border:1px solid var(--br);border-radius:6px;padding:.3rem .5rem;font-size:.85rem;cursor:pointer">&#127922;</button>' +
@@ -2236,9 +2279,9 @@ function runGenerator() {
 
   fetch('https://api.anthropic.com/v1/messages', {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json', 'x-api-key': key, 'anthropic-version': '2023-06-01', 'anthropic-dangerous-direct-browser-access': 'true' },
+    headers: { 'Content-Type': 'application/json', 'x-api-key': key, 'anthropic-version': '2023-06-01', 'anthropic-dangerous-direct-browser-access': 'true', 'anthropic-beta': 'server-side-fallback-2026-07-01' },
     body: JSON.stringify({
-      model: 'claude-sonnet-4-6', max_tokens: 1500,
+      model: AI_MODEL, max_tokens: 5500, output_config: { effort: 'medium' }, fallbacks: 'default',
       system: 'Je bent een professionele kok. Je prioriteit is altijd een bestaand, beproefd gerecht te kiezen dat past bij de opgegeven ingrediënten. Kies het meest logische en smakelijke gerecht dat mensen kennen. Wees alleen creatief als er geen goed bestaand gerecht past. Geen fusion tenzij het een erkende wereldkeuken is. Alle ingrediënten moeten culinair bij elkaar passen. Schrijf in het Nederlands. Geef ALLEEN een geldig JSON object terug, geen uitleg.',
       messages: [{ role: 'user', content: 'Welk bestaand, lekker gerecht past het best bij deze ingrediënten: ' + input + '? Seed: ' + rSeed + '. Kies een klassiek of bekend gerecht uit een echte keuken. Geef ALLEEN een JSON object terug met velden: name, category (vlees/kip/vis/vegetarisch/pasta/soep/nagerecht/brood/overig), emoji, servings, time, difficulty (Makkelijk/Gemiddeld/Moeilijk), ingredients (array), steps (array).' }]
     })
@@ -2262,15 +2305,15 @@ function runGenerator() {
 
 function _showGenResult(r) {
   var result = document.getElementById('gen-result');
-  var em = r.emoji || CE[r.category] || '&#127860;';
-  var ings = (r.ingredients||[]).map(function(i){ return '<li style="padding:.15rem 0;font-size:.85rem;border-bottom:1px solid var(--br)">' + i + '</li>'; }).join('');
-  var steps = (r.steps||[]).map(function(s,i){ return '<div style="display:flex;gap:.6rem;margin-bottom:.4rem"><span style="font-family:Playfair Display,serif;font-size:1.1rem;font-weight:700;color:var(--or);flex-shrink:0;min-width:18px">' + (i+1) + '</span><span style="font-size:.85rem;line-height:1.65">' + s + '</span></div>'; }).join('');
+  var em = esc(r.emoji) || CE[r.category] || '&#127860;';
+  var ings = (r.ingredients||[]).map(function(i){ return '<li style="padding:.15rem 0;font-size:.85rem;border-bottom:1px solid var(--br)">' + esc(i) + '</li>'; }).join('');
+  var steps = (r.steps||[]).map(function(s,i){ return '<div style="display:flex;gap:.6rem;margin-bottom:.4rem"><span style="font-family:Playfair Display,serif;font-size:1.1rem;font-weight:700;color:var(--or);flex-shrink:0;min-width:18px">' + (i+1) + '</span><span style="font-size:.85rem;line-height:1.65">' + esc(s) + '</span></div>'; }).join('');
 
   result.innerHTML = '<div style="background:var(--wh);border:1px solid var(--br);border-radius:12px;overflow:hidden;margin-top:.5rem">' +
     '<div style="background:var(--bd);padding:.85rem 1rem;display:flex;align-items:center;gap:.75rem">' +
       '<div style="font-size:2rem">' + em + '</div>' +
-      '<div><div style="font-family:Playfair Display,serif;font-size:1.05rem;color:white;font-weight:700">' + r.name + '</div>' +
-      '<div style="font-size:.72rem;color:rgba(255,255,255,.65);margin-top:.1rem">' + (r.category||'') + (r.time ? ' &nbsp;·&nbsp; ' + r.time + ' min' : '') + ' &nbsp;·&nbsp; ' + (r.servings||4) + ' <span id="gen-srv-label">pers.</span></div></div>' +
+      '<div><div style="font-family:Playfair Display,serif;font-size:1.05rem;color:white;font-weight:700">' + esc(r.name) + '</div>' +
+      '<div style="font-size:.72rem;color:rgba(255,255,255,.65);margin-top:.1rem">' + esc(r.category||'') + (r.time ? ' &nbsp;·&nbsp; ' + esc(r.time) + ' min' : '') + ' &nbsp;·&nbsp; ' + esc(r.servings||4) + ' <span id="gen-srv-label">pers.</span></div></div>' +
     '</div>' +
     '<div style="padding:.85rem 1rem">' +
       '<div style="font-family:Playfair Display,serif;font-size:.9rem;font-weight:700;color:var(--bd);margin-bottom:.4rem">Ingredienten</div>' +
@@ -2348,8 +2391,8 @@ function _sendGenChat() {
 
   fetch('https://api.anthropic.com/v1/messages', {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json', 'x-api-key': key, 'anthropic-version': '2023-06-01', 'anthropic-dangerous-direct-browser-access': 'true' },
-    body: JSON.stringify({ model: 'claude-sonnet-4-6', max_tokens: 1200, system: systemMsg, messages: messages })
+    headers: { 'Content-Type': 'application/json', 'x-api-key': key, 'anthropic-version': '2023-06-01', 'anthropic-dangerous-direct-browser-access': 'true', 'anthropic-beta': 'server-side-fallback-2026-07-01' },
+    body: JSON.stringify({ model: AI_MODEL, max_tokens: 5200, output_config: { effort: 'medium' }, fallbacks: 'default', system: systemMsg, messages: messages })
   }).then(function(r2){ return r2.json(); }).then(function(data) {
     if (data.error) throw new Error(data.error.message);
     var fullText = (data.content||[]).map(function(b){ return b.text||''; }).join('').trim();
@@ -2372,7 +2415,7 @@ function _sendGenChat() {
           // Show message with apply button
           var msgDiv = document.createElement('div');
           msgDiv.style.cssText = 'background:var(--bp);border-radius:10px;padding:.55rem .75rem;font-size:.82rem;line-height:1.55;color:var(--tx);max-width:88%;align-self:flex-start;display:flex;flex-direction:column;gap:.4rem';
-          msgDiv.innerHTML = '<span>' + (beforeUpdate || 'Ik pas het recept aan.') + '</span>' +
+          msgDiv.innerHTML = '<span>' + esc(beforeUpdate || 'Ik pas het recept aan.') + '</span>' +
             '<button onclick="_applyGenUpdate()" style="background:var(--or);color:white;border:none;border-radius:6px;padding:.35rem .75rem;font-size:.78rem;font-weight:600;cursor:pointer;width:fit-content">&#10003; Pas recept aan</button>';
           msgs.appendChild(msgDiv);
           msgs.scrollTop = msgs.scrollHeight;
@@ -2578,9 +2621,9 @@ function calcStartTimes() {
     if (startMin < 0) startMin += 24 * 60;
     var sh = String(Math.floor(startMin/60)%24).padStart(2,'0');
     var sm2 = String(startMin%60).padStart(2,'0');
-    var em = r.emoji || CE[r.category] || '🍽️';
+    var em = esc(r.emoji) || CE[r.category] || '🍽️';
     return '<div class="sk-start-row">' +
-      '<div class="sk-start-name">' + em + ' ' + r.name + '<span style="font-size:.7rem;color:' + (note ? 'var(--gn)' : 'var(--tl)') + ';margin-left:.35rem">' + Math.round(total) + ' min' + note + '</span></div>' +
+      '<div class="sk-start-name">' + em + ' ' + esc(r.name) + '<span style="font-size:.7rem;color:' + (note ? 'var(--gn)' : 'var(--tl)') + ';margin-left:.35rem">' + Math.round(total) + ' min' + note + '</span></div>' +
       '<div class="sk-start-time">' + sh + ':' + sm2 + '</div>' +
     '</div>';
   }).join('');
@@ -2786,7 +2829,7 @@ function renderSkTimeline() {
     var pillLabel = isEnd ? 'Klaar' : (done ? '✓' : (now ? 'Nu' : ''));
     eventsHtml += '<div class="tl-ev" style="height:' + rowH + 'px;align-items:center">' +
       (pillLabel ? '<span class="tl-pill ' + pillCls + '">' + pillLabel + '</span>' : '<span style="width:4px;flex-shrink:0"></span>') +
-      '<span class="tl-ev-txt ' + txtCls + '">' + ev.label + '</span>' +
+      '<span class="tl-ev-txt ' + txtCls + '">' + esc(ev.label) + '</span>' +
     '</div>';
   });
 
@@ -2806,7 +2849,7 @@ function renderSkCols() {
     var ings = r.ingredients || [];
     var idx = skStepIdx[id] || 0;
     var total = steps.length;
-    var em = r.emoji || CE[r.category] || '\u{1F37D}';
+    var em = esc(r.emoji) || CE[r.category] || '\u{1F37D}';
     var timer = skTimers[id] || { display: '--:--', running: false };
     // Recalculate from wall-clock endTime in case we were in background
     if (timer.running && timer.countdown && timer.endTime) {
@@ -2834,9 +2877,9 @@ function renderSkCols() {
 
       bodyHtml += '<div class="sk-step-cur">' +
         '<div class="sk-step-num">Stap ' + (idx+1) + ' / ' + total + '</div>' +
-        '<div class="sk-step-txt">' + curStep + '</div>' +
+        '<div class="sk-step-txt">' + esc(curStep) + '</div>' +
         (relIngs.length ? '<div style="margin-top:.5rem;padding-top:.4rem;border-top:1px solid rgba(232,100,42,.2)">' +
-          relIngs.map(function(ing){ return '<div style="font-size:.75rem;color:var(--tm);padding:.1rem 0">&#8226; ' + ing + '</div>'; }).join('') +
+          relIngs.map(function(ing){ return '<div style="font-size:.75rem;color:var(--tm);padding:.1rem 0">&#8226; ' + esc(ing) + '</div>'; }).join('') +
         '</div>' : '') +
       '</div>';
     } else {
@@ -2860,15 +2903,15 @@ function renderSkCols() {
       if (!or2) return '';
       var oidx = skStepIdx[oid] || 0;
       var osteps = or2.steps || [];
-      var oem = or2.emoji || CE[or2.category] || '\u{1F37D}';
+      var oem = esc(or2.emoji) || CE[or2.category] || '\u{1F37D}';
       if (oidx >= osteps.length) {
         return '<div style="font-size:.75rem;color:var(--gn);padding:.3rem 0;display:flex;gap:.4rem;align-items:center">' +
-          '<span>' + oem + '</span><span>&#10003; ' + or2.name + ' klaar</span>' +
+          '<span>' + oem + '</span><span>&#10003; ' + esc(or2.name) + ' klaar</span>' +
         '</div>';
       }
       return '<div style="font-size:.75rem;color:var(--tm);padding:.3rem 0;display:flex;gap:.4rem;align-items:flex-start">' +
         '<span style="flex-shrink:0">' + oem + '</span>' +
-        '<span><strong style="color:var(--tx)">' + or2.name + '</strong> — stap ' + (oidx+1) + '/' + osteps.length + ': ' + osteps[oidx].slice(0,60) + (osteps[oidx].length > 60 ? '…' : '') + '</span>' +
+        '<span><strong style="color:var(--tx)">' + esc(or2.name) + '</strong> — stap ' + (oidx+1) + '/' + osteps.length + ': ' + esc(osteps[oidx].slice(0,60)) + (osteps[oidx].length > 60 ? '…' : '') + '</span>' +
       '</div>';
     }).join('');
 
@@ -2888,7 +2931,7 @@ function renderSkCols() {
     return '<div class="sk-col">' +
       '<div class="sk-col-head">' +
         '<div class="sk-col-emoji">' + em + '</div>' +
-        '<div class="sk-col-name">' + r.name + '</div>' +
+        '<div class="sk-col-name">' + esc(r.name) + '</div>' +
         '<div class="sk-col-timer" id="skt-head-' + id + '">' + timerDisplay + '</div>' +
       '</div>' +
       '<div class="sk-col-body">' + bodyHtml + '</div>' +
@@ -3171,7 +3214,7 @@ document.getElementById('pf-doc').addEventListener('change', function(){ handleF
 
 // Register service worker
 if ('serviceWorker' in navigator) {
-  navigator.serviceWorker.register('/recepten/sw.js').catch(function(){});
+  navigator.serviceWorker.register('/recepten/sw.js', { updateViaCache: 'none' }).catch(function(){});
 }
 </script>
 <input type="file" id="photo-input" accept="image/*" style="display:none" onchange="onPhotoSelected(event)"/>

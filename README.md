@@ -1,33 +1,39 @@
-# Mijn Recepten App
+# Cucina Hendriksen
 
-Persoonlijke PWA receptenverzameling. Donker thema, oranje accenten, installeerbaar op telefoon.
+Persoonlijke receptenverzameling als web-app (PWA), installeerbaar op je telefoon.
+Live op GitHub Pages: `https://hendriksenrutger-dev.github.io/recepten/`
 
-## GitHub Pages Deployment
+## Wat kan de app
 
-1. Maak een nieuw GitHub repository aan (bijv. `mijn-recepten`)
-2. Upload alle bestanden (inclusief `icons/` map)
-3. Ga naar **Settings → Pages**
-4. Kies **Source: Deploy from a branch → main → / (root)**
-5. Na ~1 minuut is de app live op `https://jouwgebruikersnaam.github.io/mijn-recepten/`
+- **Recepten toevoegen** op veel manieren: handmatig, via een URL, een foto
+  (ook handgeschreven), een PDF, of laten bedenken op basis van ingrediënten.
+- **Koken:** kookstand met grote stappen, timers en scherm-aan, en
+  "samen koken" om meerdere gerechten tegelijk te plannen.
+- **Extra's:** porties omrekenen, voedingswaarden, wijnadvies, "lekker met",
+  weekmenu, tips per recept, foto's.
+- **Boodschappen:** ingrediënten met één tik naar de
+  [Boodschappen-app](https://github.com/hendriksenrutger-dev/Boodschappen).
+  Beide apps delen dezelfde login.
 
-## Icons maken
+## Hoe het werkt
 
-Maak twee vierkante PNG iconen en zet ze in een `icons/` map:
-- `icons/icon-192.png` (192×192 px)
-- `icons/icon-512.png` (512×512 px)
+| Onderdeel | Waar |
+|---|---|
+| App | `index.html` (alles in één bestand) |
+| Recepten, foto's, login | Supabase (tabel `recipes`, bucket `recipe-photos`) |
+| AI-functies | Claude API, met je eigen API-sleutel (⚙️ in de app) |
+| Offline | `sw.js` bewaart de app; recepten komen altijd vers uit de database |
+| Beveiliging database | `supabase/beveiliging.sql` |
 
-Gebruik bijv. een 🍳 emoji op een oranje achtergrond (#FF6B35).
+De Anthropic API-sleutel wordt alleen in je eigen browser bewaard (localStorage).
+Stel in de [Anthropic Console](https://console.anthropic.com) een uitgavenlimiet in.
+De gebruikte Claude-modellen staan bovenaan het script in `index.html`
+(`AI_MODEL` en `AI_MODEL_SNEL`).
 
-## URL Import
+## Nieuwe versie uitbrengen
 
-Voor het importeren van webrecepten heb je een Anthropic API key nodig:
-1. Ga naar https://console.anthropic.com
-2. Maak een API key aan
-3. Klik op ⚙️ in de app en vul je key in
+1. Pas `index.html` aan en hoog het versienummer op in `<meta name="version">`.
+2. Zet het bestand op GitHub (branch `main`). Na ongeveer een minuut staat het live.
+3. Op de telefoon: de app één keer sluiten en weer openen.
 
-De key wordt lokaal opgeslagen in je browser (localStorage), nooit gedeeld.
-
-## Offline gebruik
-
-De app werkt offline na de eerste bezoek (Service Worker cacht alle bestanden).
-Recepten worden opgeslagen in localStorage van de browser.
+`sw.js` hoeft daarvoor niet aangepast te worden.
